@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "target": "ES5",
+        "jsx": "preserve",
+        "outDir": "lib/build/",
+        "sourceMap": true,
+        "removeComments": false,
+        "alwaysStrict": true,
+        "noImplicitAny": false,
+        "noImplicitReturns": false
+    },
+    "include": [
+        "lib/src/*.ts"
+    ],
+    "formatCodeOptions": {
+        "indentSize": 5,
+        "tabSize": 5,
+        "newLineCharacter": "\r\n",
+        "convertTabsToSpaces": false,
+        "insertSpaceAfterCommaDelimiter": true,
+        "insertSpaceAfterSemicolonInForStatements": true,
+        "insertSpaceBeforeAndAfterBinaryOperators": true,
+        "insertSpaceAfterKeywordsInControlFlowStatements": true,
+        "insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
+        "insertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis": false,
+        "placeOpenBraceOnNewLineForFunctions": false,
+        "placeOpenBraceOnNewLineForControlBlocks": false
+    },
+    "compileOnSave": true,
+    "buildOnSave": false
+}
