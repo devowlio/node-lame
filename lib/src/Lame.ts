@@ -262,18 +262,20 @@ class Lame {
 					}
 
 					this.emitter.emit("progress", [this.status.progress, this.status.eta]);
-
-					if (this.status.progress == 100 && !this.status.finished) {
-						this.status.finished = true;
-						this.status.progress = 100;
-						this.status.eta = "00:00";
-
-						this.emitter.emit("finish");
-					}
 				}
 				else if (data.search(/^lame: /) > -1) { // Not expected output => error
 					this.emitter.emit("error", String(data));
 				}
+			}
+		}
+
+		const progressOnClose = (code) => {
+			if (code == 0) {
+				this.status.finished = true;
+				this.status.progress = 100;
+				this.status.eta = "00:00";
+
+				this.emitter.emit("finish");
 			}
 		}
 
@@ -289,6 +291,7 @@ class Lame {
 		const instance = spawn("Lame", args);
 		instance.stdout.on("data", progressStdout);
 		instance.stderr.on("data", progressStdout); // Most output, even not errors, are on stderr
+		instance.on("close", progressOnClose);
 		instance.on("error", progressError);
 
 		// Return promise of finish encoding progress
