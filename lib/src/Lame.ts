@@ -263,6 +263,10 @@ class Lame {
 					}
 
 					this.emitter.emit("progress", [this.status.progress, this.status.eta]);
+
+					if (this.status.progress) {
+						this.emitter.emit("finish");
+					}
 				}
 				else if (data.search(/^lame: /) > -1) { // Not expected output => error
 					this.emitter.emit("error", String(data));
