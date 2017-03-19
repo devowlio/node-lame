@@ -186,7 +186,6 @@ class Lame {
 	 * @param {string} inputFilePath Path of input file
 	 */
 	private execProgress(inputFilePath: string, args: string[], type: "encode" | "decode") {
-		console.log(args);
 		// Add output settings args
 		args.push("--disptime");
 		args.push("1");
