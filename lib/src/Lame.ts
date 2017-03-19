@@ -264,7 +264,11 @@ class Lame {
 
 					this.emitter.emit("progress", [this.status.progress, this.status.eta]);
 
-					if (this.status.progress) {
+					if (this.status.progress == 100 && !this.status.finished) {
+						this.status.finished = true;
+						this.status.progress = 100;
+						this.status.eta = "00:00";
+
 						this.emitter.emit("finish");
 					}
 				}
