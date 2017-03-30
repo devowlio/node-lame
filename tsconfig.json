@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "ES5",
+        "target": "ES6",
         "jsx": "preserve",
         "outDir": "lib/build/",
         "sourceMap": true,
