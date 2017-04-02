@@ -4,4 +4,4 @@
 
 "use strict";
 
-module.exports = require('./lib/build/Lame');
+module.exports = require('./lib/build/Lame').Lame;

@@ -14,7 +14,7 @@ class LameOptions {
      */
     constructor(options: Options) {
         // Output is required
-        if (options.output == undefined) {
+        if (options["output"] == undefined) {
             throw new Error("LAME: Invalid option: 'output' is required");
         }
 
