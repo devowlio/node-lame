@@ -182,7 +182,7 @@ class LameOptions {
     }
 
     private output(value) {
-        return undefined; // Handle in Lame class, because of fixed possition (2nd parameter)
+        return undefined; // Handled in Lame class, because of fixed position (2nd parameter)
     }
 
     private raw(value) {
@@ -307,7 +307,7 @@ class LameOptions {
             return [`--freeformat`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: Invalid option: 'mode' is not in range of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'.");
+            throw new Error("LAME: Invalid option: 'mode' is not in range of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'.");
         }
     }
 
@@ -380,7 +380,7 @@ class LameOptions {
             return [`--preset`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: Invalid option: 'mode' is not in range of 'medium', 'standard', 'extreme' or 'insane'.");
+            throw new Error("LAME: Invalid option: 'mode' is not in range of 'medium', 'standard', 'extreme' or 'insane'.");
         }
     }
 
@@ -407,7 +407,7 @@ class LameOptions {
             return [`-b`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.");
+            throw new Error("LAME: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.");
         }
     }
 

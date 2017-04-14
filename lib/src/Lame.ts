@@ -190,7 +190,7 @@ class Lame {
 		args.push("--disptime");
 		args.push("1");
 
-		// Add output file to args, if not in options undefined
+		// Add output file to args, if not undefined in options
 		if (this.options.output == "buffer") {
 			const tempOutPath = this.tempFilePathGenerator("progressed");
 			args.unshift(`${tempOutPath}`);
@@ -215,14 +215,14 @@ class Lame {
 
 		/**
 		 * Handles output of stdout (and stderr)
-		 * Parse data from output into object
+		 * Parses data from output into object
 		 * 
 		 * @param {(String | Buffer)} data
 		 */
 		const progressStdout = (data: String | Buffer) => {
 			data = data.toString().trim();
 
-			// Every output of Lame comes as "stderr", so decide if it is an error or valid data by regex
+			// Every output of Lame comes as "stderr". Deciding if it is an error or valid data by regex
 			if (data.length > 6) {
 				if (type == "encode" && data.search("Writing LAME Tag...done") > -1) { // processing done
 					this.status.finished = true;
@@ -263,7 +263,7 @@ class Lame {
 
 					this.emitter.emit("progress", [this.status.progress, this.status.eta]);
 				}
-				else if (data.search(/^lame: /) > -1) { // Not expected output => error
+				else if (data.search(/^lame: /) > -1) { // Unexpected output => error
 					this.emitter.emit("error", String(data));
 				}
 			}
@@ -290,7 +290,7 @@ class Lame {
 
 		const instance = spawn("Lame", args);
 		instance.stdout.on("data", progressStdout);
-		instance.stderr.on("data", progressStdout); // Most output, even not errors, are on stderr
+		instance.stderr.on("data", progressStdout); // Most output, even non-errors, are on stderr
 		instance.on("close", progressOnClose);
 		instance.on("error", progressError);
 

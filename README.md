@@ -3,7 +3,7 @@ node-lame
 
 LAME is an open-source encoder that encodes and decodes audio to the MP3 file format. For all MP3 needs a Node.js wrapper of the full [LAME](http://lame.sourceforge.net/) command line.
 
-The encoder reads WAV-, MP1-, MP2- und MP3-format and encodes it into a MP3 file, and the decoder reads MP3-format and decodes it into WAV.
+The encoder reads WAV-, MP1-, MP2- and MP3-format and encodes it into an MP3 file. The decoder reads MP3-format and decodes it into WAV.
 
 Requirements
 ------------
@@ -27,7 +27,7 @@ If you write in Typescipt 2 or newer, it's just the same:
 $ npm install --save @types/node-lame
 ```
 
-If you have not installed [LAME](http://lame.sourceforge.net/) yet, pleease use the following an instruction.
+If you have not installed [LAME](http://lame.sourceforge.net/) yet, please use the following instruction.
 
 ### Install on Debian/Ubuntu
 ``` bash
@@ -152,7 +152,7 @@ const encoder = new Lame({
 const emitter = encoder.getEmitter();
 
 emitter.on("progress", ([progress, eta]) => {
-    // On progress of encoding; in percent and estimated time of arrival as 00:00
+    // On progress of encoding. Progress in percent and estimated time of arrival as mm:ss
 });
 
 emitter.on("finish", () => {
@@ -199,7 +199,7 @@ const decoder = new Lame({
 
 decoder.decode()
     .then(() => {
-        // Decodung finished
+        // Decoding finished
         const buffer = decoder.getBuffer();
     })
     .catch((error) => {
@@ -219,7 +219,7 @@ const decoder = new Lame({
 
 decoder.decode()
     .then(() => {
-        // Decodung finished
+        // Decoding finished
     })
     .catch((error) => {
         // Something went wrong
@@ -238,7 +238,7 @@ const decoder = new Lame({
 
 decoder.decode()
     .then(() => {
-        // Decodung finished
+        // Decoding finished
         const buffer = decoder.getBuffer();
     })
     .catch((error) => {
