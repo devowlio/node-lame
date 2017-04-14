@@ -315,6 +315,8 @@ class Lame {
 
 						this.progressedBuffer = new Buffer(data);
 						this.progressedBufferTempFilePath = undefined;
+
+						resolve(this);
 					});
 				}
 				else {
