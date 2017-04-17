@@ -288,7 +288,7 @@ class Lame {
 			this.emitter.emit("error", error);
 		}
 
-		const instance = spawn("Lame", args);
+		const instance = spawn("lame", args);
 		instance.stdout.on("data", progressStdout);
 		instance.stderr.on("data", progressStdout); // Most output, even non-errors, are on stderr
 		instance.on("close", progressOnClose);
