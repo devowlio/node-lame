@@ -6,6 +6,7 @@
   "bugs": {
     "url": "https://github.com/jankarres/node-lame/issues"
   },
+  "types": "./index.d.ts",
   "author": {
     "name": "Jan Karres",
     "email": "jan.karres@mediee.com",
