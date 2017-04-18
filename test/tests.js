@@ -40,7 +40,7 @@ testCase("Lame class", () => {
 
                     fs.unlink(OUTPUTFILE);
 
-                    const expected = "LAME: ERROR: unsupported input file";
+                    const expected = "lame: Warning: unsupported audio format";
                     const actuall = error.message;
 
                     assert.equal(actuall, expected);
@@ -168,8 +168,8 @@ testCase("Lame class", () => {
     });
 
     testCase("Decode to .wav", () => {
-        const TESTFILE = "./test/example.mp3"
-        const OUTPUTFILE = "./test/converted.wav"
+        const TESTFILE = "./test/example.mp3";
+        const OUTPUTFILE = "./test/converted.wav";
 
         /**
          * @testname Set invalid wav file
@@ -190,7 +190,7 @@ testCase("Lame class", () => {
                 .catch((error) => {
                     errorCaught = true;
 
-                    const expected = "LAME: ERROR: unsupported input file";
+                    const expected = "lame: Error reading headers in mp3 input file ./test/notAnMp3File.mp3.\nCan't init infile './test/notAnMp3File.mp3'";
                     const actuall = error.message;
 
                     assert.equal(actuall, expected);
@@ -328,7 +328,7 @@ testCase("Lame class", () => {
             }
             catch (error) {
                 errorCaught = true;
-                const expected = "LAME: Invalid option: 'output' is required";
+                const expected = "lame: Invalid option: 'output' is required";
                 const actuall = error.message;
 
                 assert.equal(actuall, expected);
@@ -354,9 +354,7 @@ testCase("Lame class", () => {
                 .catch((error) => {
                     errorCaught = true;
 
-                    fs.unlinkSync(OUTPUTFILE);
-
-                    const expected = "LAME: bitrate or bitrate-mode is mandatory";
+                    const expected = "lame: Warning: unsupported audio format";
                     const actuall = error.message;
 
                     assert.equal(actuall, expected);
@@ -380,8 +378,6 @@ testCase("Lame class", () => {
             }
             catch (error) {
                 errorCaught = true;
-
-                fs.unlinkSync(OUTPUTFILE);
 
                 const expected = "Audio file (path) dose not exist";
                 const actuall = error.message;
@@ -550,8 +546,13 @@ testCase("Lame class", () => {
 
             return instance.encode()
                 .catch(() => {
-                    fs.unlinkSync(OUTPUTFILE);
-                    assert.isTrue(errorTriggered);
+                    return new Promise((resove, reject) => {
+                        setTimeout(() => {
+                            assert.isTrue(errorTriggered);
+
+                            resove();
+                        }, 500);
+                    });
                 });
         });
 
@@ -560,7 +561,6 @@ testCase("Lame class", () => {
         * Specifiy optional Options and check if they are set in the options object.
         */
         assertions("Options", () => {
-
             const instance = new Lame({
                 "output": OUTPUTFILE,
                 "bitrate": 128,
@@ -576,8 +576,8 @@ testCase("Lame class", () => {
                 "mp3Input": true,
                 "mode": "r",
                 "to-mono": true,
-                //"channel-different-block-sizes": 200,
-                //"freeformat": 230,
+                "channel-different-block-sizes": true,
+                "freeformat": "FreeAmp",
                 "disable-info-tag": true,
                 "comp": 5,
                 "scale": 2,
@@ -647,6 +647,9 @@ testCase("Lame class", () => {
                 '-m',
                 'r',
                 '-a',
+                '-d',
+                '--freeformat',
+                'FreeAmp',
                 '-t',
                 '--comp',
                 5,
@@ -718,8 +721,6 @@ testCase("Lame class", () => {
                 '--genre-list',
                 '\'test, genres\''
             ];
-
-            fs.unlinkSync(OUTPUTFILE);
 
             const actual = instance.args;
             assert.deepEqual(expected, actual);

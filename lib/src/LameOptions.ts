@@ -15,7 +15,7 @@ class LameOptions {
     constructor(options: Options) {
         // Output is required
         if (options["output"] == undefined) {
-            throw new Error("LAME: Invalid option: 'output' is required");
+            throw new Error("lame: Invalid option: 'output' is required");
         }
 
         // Save options as arguments
@@ -208,7 +208,7 @@ class LameOptions {
             return [`-s`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'sfreq' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48.");
+            throw new Error("lame: Invalid option: 'sfreq' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48.");
         }
     }
 
@@ -217,7 +217,7 @@ class LameOptions {
             return [`--bitwidth`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'sfreq' is not in range of 8, 16, 24 or 32.");
+            throw new Error("lame: Invalid option: 'sfreq' is not in range of 8, 16, 24 or 32.");
         }
     }
 
@@ -280,7 +280,7 @@ class LameOptions {
             return [`-m`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'mode' is not in range of 's', 'j', 'f', 'd', 'm', 'l' or 'r'.");
+            throw new Error("lame: Invalid option: 'mode' is not in range of 's', 'j', 'f', 'd', 'm', 'l' or 'r'.");
         }
     }
 
@@ -307,7 +307,7 @@ class LameOptions {
             return [`--freeformat`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'mode' is not in range of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'.");
+            throw new Error("lame: Invalid option: 'mode' is not in range of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'.");
         }
     }
 
@@ -380,7 +380,7 @@ class LameOptions {
             return [`--preset`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'mode' is not in range of 'medium', 'standard', 'extreme' or 'insane'.");
+            throw new Error("lame: Invalid option: 'mode' is not in range of 'medium', 'standard', 'extreme' or 'insane'.");
         }
     }
 
@@ -389,7 +389,7 @@ class LameOptions {
             return [`--noasm`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'noasm' is not in range of 'mmx', '3dnow' or 'sse'.");
+            throw new Error("lame: Invalid option: 'noasm' is not in range of 'mmx', '3dnow' or 'sse'.");
         }
     }
 
@@ -398,7 +398,7 @@ class LameOptions {
             return [`-q`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'quality' is not in range of 0 to 9.");
+            throw new Error("lame: Invalid option: 'quality' is not in range of 0 to 9.");
         }
     }
 
@@ -407,7 +407,7 @@ class LameOptions {
             return [`-b`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.");
+            throw new Error("lame: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.");
         }
     }
 
@@ -434,7 +434,7 @@ class LameOptions {
             return [`--abr`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'abr' is not in range of 8 to 310.");
+            throw new Error("lame: Invalid option: 'abr' is not in range of 8 to 310.");
         }
     }
 
@@ -452,7 +452,7 @@ class LameOptions {
             return [`-V`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'vbrQuality' is not in range of 0 to 9.");
+            throw new Error("lame: Invalid option: 'vbrQuality' is not in range of 0 to 9.");
         }
     }
 
@@ -470,7 +470,7 @@ class LameOptions {
             return [`-e`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'emp' is not in range of 'n', 5 or 'c'.");
+            throw new Error("lame: Invalid option: 'emp' is not in range of 'n', 5 or 'c'.");
         }
     }
 
@@ -540,7 +540,7 @@ class LameOptions {
             return [`--resample`, value];
         }
         else {
-            throw new Error("LAME: Invalid option: 'resample' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48.");
+            throw new Error("lame: Invalid option: 'resample' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48.");
         }
     }
 
@@ -578,7 +578,7 @@ class LameOptions {
                     arg0 = `--pad-id3v2-size`;
                 }
                 else {
-                    throw new Error(`LAME: Invalid option: 'meta' unknown property '${key}'`);
+                    throw new Error(`lame: Invalid option: 'meta' unknown property '${key}'`);
                 }
 
                 const arg1 = `'${value}'`;
@@ -590,7 +590,7 @@ class LameOptions {
                 this.args.push(`--${key}`);
             }
             else {
-                throw new Error(`LAME: Invalid option: 'meta' unknown property '${key}'`);
+                throw new Error(`lame: Invalid option: 'meta' unknown property '${key}'`);
             }
         }
 

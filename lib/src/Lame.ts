@@ -150,7 +150,7 @@ class Lame {
 		}
 
 		if (this.fileBuffer != undefined) { // File buffer is set; write it as temp file
-			this.fileBufferTempFilePath = this.tempFilePathGenerator("raw");
+			this.fileBufferTempFilePath = this.tempFilePathGenerator("raw", type);
 
 			return new Promise((resolve, reject) => {
 				fsWriteFile(this.fileBufferTempFilePath, this.fileBuffer, (err) => {
@@ -192,7 +192,7 @@ class Lame {
 
 		// Add output file to args, if not undefined in options
 		if (this.options.output == "buffer") {
-			const tempOutPath = this.tempFilePathGenerator("progressed");
+			const tempOutPath = this.tempFilePathGenerator("encoded", type);
 			args.unshift(`${tempOutPath}`);
 
 			// Set decode/encoded file path
@@ -263,19 +263,26 @@ class Lame {
 
 					this.emitter.emit("progress", [this.status.progress, this.status.eta]);
 				}
-				else if (data.search(/^lame: /) > -1) { // Unexpected output => error
-					this.emitter.emit("error", String(data));
+				else if (data.search(/^lame: /) > -1 || data.search(/^Warning: /) > -1 || data.search(/Error /) > -1) { // Unexpected output => error
+					if (data.search(/^lame: /) == -1) {
+						this.emitter.emit("error", new Error("lame: " + data));
+					}
+					else {
+						this.emitter.emit("error", new Error(String(data)));
+					}
 				}
 			}
 		}
 
 		const progressOnClose = (code) => {
 			if (code == 0) {
+				if (!this.status.finished) {
+					this.emitter.emit("finish");
+				}
+
 				this.status.finished = true;
 				this.status.progress = 100;
 				this.status.eta = "00:00";
-
-				this.emitter.emit("finish");
 			}
 		}
 
@@ -336,7 +343,7 @@ class Lame {
 	 * @param {("raw" | "encoded")} type 
 	 * @returns {string} Path
 	 */
-	private tempFilePathGenerator(type: "raw" | "progressed"): string {
+	private tempFilePathGenerator(type: "raw" | "encoded", progressType: "encode" | "decode"): string {
 		let path = `./temp/${type}/`;
 		let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -344,12 +351,16 @@ class Lame {
 			path += possible.charAt(Math.floor(Math.random() * possible.length));
 		}
 
+		if (type == "raw" && progressType == "decode") {
+			path += `.mp3`;
+		}
+
 
 		if (!fsExistsSync(`./temp/${path}`)) {
 			return path;
 		}
 		else {
-			return this.tempFilePathGenerator(type);
+			return this.tempFilePathGenerator(type, progressType);
 		}
 	}
 
@@ -358,11 +369,21 @@ class Lame {
 	 */
 	private removeTempFilesOnError() {
 		if (this.fileBufferTempFilePath != undefined) {
-			fsUnlink(this.fileBufferTempFilePath);
+			try {
+				fsUnlink(this.fileBufferTempFilePath);
+			}
+			catch (error) {
+				// Ignore
+			}
 		}
 
 		if (this.progressedBufferTempFilePath != undefined) {
-			fsUnlink(this.progressedBufferTempFilePath);
+			try {
+				fsUnlink(this.progressedBufferTempFilePath);
+			}
+			catch (error) {
+				// Ignore; actually already unlinked
+			}
 		}
 	}
 }
