@@ -29,7 +29,7 @@ $ npm install --save @types/node-lame
 
 If you have not installed [LAME](http://lame.sourceforge.net/) yet, please use the following instruction.
 
-### Install on Debian/Ubuntu
+### Install on Debian
 ``` bash
 $ sudo apt-get install lame
 ```
