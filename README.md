@@ -44,7 +44,7 @@ Examples
 
 ### Encode from file to file
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     "output": "./audio-files/demo.mp3",
@@ -62,7 +62,7 @@ encoder.encode()
 
 ### Encode from file to buffer
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     "output": "buffer",
@@ -83,7 +83,7 @@ encoder.encode()
 ``` node
 [...]
 
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     "output": "./audio-files/demo.mp3",
@@ -103,7 +103,7 @@ encoder.encode()
 ``` node
 [...]
 
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     "output": "buffer",
@@ -122,7 +122,7 @@ encoder.encode()
 
 ### Get status of encoder as object
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     "output": "buffer",
@@ -142,7 +142,7 @@ const status = encoder.getStatus();
 
 ### Get status of encoder as EventEmitter
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     "output": "buffer",
@@ -174,7 +174,7 @@ encoder.encode()
 
 ### Decode from file to file
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
     "output": "./audio-files/demo.wav"
@@ -191,7 +191,7 @@ decoder.decode()
 
 ### Decode from file to buffer
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
     "output": "buffer"
@@ -211,7 +211,7 @@ decoder.decode()
 ``` node
 [...]
 
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
     "output": "./audio-files/demo.wav"
@@ -230,7 +230,7 @@ decoder.decode()
 ``` node
 [...]
 
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
     "output": "buffer"
@@ -248,7 +248,7 @@ decoder.decode()
 
 ### Get status of decoder as object
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
     "output": "buffer"
@@ -267,7 +267,7 @@ const status = decoder.getStatus();
 
 ### Get status of decoder as EventEmitter
 ``` node
-const Lame = require("node-lame");
+const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
     "output": "buffer"

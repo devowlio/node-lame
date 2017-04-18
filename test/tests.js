@@ -6,7 +6,7 @@ const fs = require("fs");
 const fsp = require("fs-promise");
 const util = require("util");
 
-const Lame = require("../index");
+const Lame = require("../index").Lame;
 
 testCase("Lame class", () => {
 
