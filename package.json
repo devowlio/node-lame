@@ -38,6 +38,7 @@
     "lib/build/",
     "temp/",
     "index.js",
+    "index.d.js",
     "install.sh",
     "README.md"
   ],
