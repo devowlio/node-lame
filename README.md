@@ -21,7 +21,11 @@ You can install it with `npm`:
 $ npm install --save node-lame
 ```
 
-If you write in Typescript 2 or newer, Typings are integrated in this package.
+If you write in Typescipt 2 or newer, it's just the same:
+
+``` bash
+$ npm install --save @types/node-lame
+```
 
 If you have not installed [LAME](http://lame.sourceforge.net/) yet, please use the following instruction.
 
