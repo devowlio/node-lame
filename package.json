@@ -38,7 +38,7 @@
     "lib/build/",
     "temp/",
     "index.js",
-    "index.d.ts",
+    "index.d.js",
     "install.sh",
     "README.md"
   ],
