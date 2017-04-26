@@ -1,7 +1,7 @@
 {
   "name": "node-lame",
   "description": "LAME MP3 encoder for Node.js",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "homepage": "https://github.com/jankarres/node-lame",
   "bugs": {
     "url": "https://github.com/jankarres/node-lame/issues"
@@ -45,7 +45,7 @@
     "@types/chai": "^3.4.35",
     "@types/fs-promise": "^1.0.3",
     "@types/mocha": "^2.2.40",
-    "@types/node": "^7.0.8",
+    "@types/node": "^7.0.13",
     "chai": "^3.5.0",
     "fs-promise": "^2.0.2",
     "mocha": "^3.2.0",
