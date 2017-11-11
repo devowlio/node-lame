@@ -554,7 +554,7 @@ class LameOptions {
                     arg0 = `--tt`;
                 }
                 else if (key == "artist") {
-                    arg0 = `-ta`;
+                    arg0 = `--ta`;
                 }
                 else if (key == "album") {
                     arg0 = `--tl`;
