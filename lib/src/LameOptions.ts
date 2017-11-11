@@ -584,7 +584,7 @@ class LameOptions {
                     throw new Error(`lame: Invalid option: 'meta' unknown property '${key}'`);
                 }
 
-                const arg1 = `'${value}'`;
+                const arg1 = `${value}`;
 
                 this.args.push(arg0);
                 this.args.push(arg1);
