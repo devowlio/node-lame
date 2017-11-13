@@ -1,5 +1,5 @@
 /**
- * @author Jan Karres <jan.karres@mediee.com> (https://mediee.com/)
+ * @author Jan Karres <mail@jankarres.com> (https://jankarres.com/)
  */
 
 "use strict";
