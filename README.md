@@ -360,6 +360,7 @@ year | Set year tag.  | String | `undefined`
 comment | Set user-defined text (max 30 chars for v1 tag, 28 for v1.1).  | String | `undefined`
 track | Set track tag, with or without number of total tracks.  | String | `undefined`
 genre | Set genre tag (max 30 chars for version 1 tag).  | String | `undefined`
+artwork | Set album artwork image (path to jpeg/png/gif file, v2.3 tag). | String | `undefined`
 add-id3v2 | Force addition of version 2 tag. | boolean | `false`
 id3v1-only | Add only a version 1 tag. | boolean | `false`
 id3v2-only | Add only a version 2 tag. | boolean | `false`

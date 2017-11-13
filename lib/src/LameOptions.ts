@@ -548,13 +548,13 @@ class LameOptions {
         for (const key in metaObj) {
             const value = metaObj[key];
 
-            if (key == "title" || key == "artist" || key == "album" || key == "year" || key == "comment" || key == "track" || key == "genre" || key == "genre-list" || key == "pad-id3v2-size") {
+            if (key == "title" || key == "artist" || key == "album" || key == "year" || key == "comment" || key == "track" || key == "genre" || key == "artwork" || key == "genre-list" || key == "pad-id3v2-size") {
                 let arg0;
                 if (key == "title") {
                     arg0 = `--tt`;
                 }
                 else if (key == "artist") {
-                    arg0 = `-ta`;
+                    arg0 = `--ta`;
                 }
                 else if (key == "album") {
                     arg0 = `--tl`;
@@ -571,6 +571,9 @@ class LameOptions {
                 else if (key == "genre") {
                     arg0 = `--tg`;
                 }
+                else if (key == "artwork") {
+                    arg0 = `--ti`;
+                }
                 else if (key == "genre-list") {
                     arg0 = `--genre-list`;
                 }
@@ -581,7 +584,7 @@ class LameOptions {
                     throw new Error(`lame: Invalid option: 'meta' unknown property '${key}'`);
                 }
 
-                const arg1 = `'${value}'`;
+                const arg1 = `${value}`;
 
                 this.args.push(arg0);
                 this.args.push(arg1);
