@@ -1,22 +1,24 @@
 {
   "name": "node-lame",
   "description": "LAME MP3 encoder for Node.js",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "homepage": "https://github.com/jankarres/node-lame",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jankarres/node-lame.git"
+  },
   "bugs": {
     "url": "https://github.com/jankarres/node-lame/issues"
   },
   "author": {
     "name": "Jan Karres",
-    "email": "jan.karres@mediee.com",
-    "url": "https://mediee.com/"
+    "email": "mail@jankarres.com",
+    "url": "https://jankarres.com/"
   },
-  "contributors": [
-    {
-      "name": "Elias Porcio",
-      "email": "elias.porcio@gmail.com"
-    }
-  ],
+  "contributors": [{
+    "name": "Elias Porcio",
+    "email": "elias.porcio@gmail.com"
+  }],
   "keywords": [
     "mp3",
     "wav",
