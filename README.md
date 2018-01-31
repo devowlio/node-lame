@@ -8,9 +8,9 @@ The encoder reads WAV-, MP1-, MP2- and MP3-format and encodes it into an MP3 fil
 Requirements
 ------------
 
-* Linux or Mac OS (Windows is NOT tested by this package)
-* lame installed (instructions see below)
-* node 6.9.* or newer
+* Linux or Mac OS (This package is NOT tested on Windows.)
+* Lame Installed (View instructions below.)
+* Node 6.9.* or newer
 
 Installation
 ------------
@@ -38,6 +38,11 @@ $ sudo apt-get install lame
 ``` bash
 $ brew install lame
 ```
+
+### Install on Windows
+1. Go to the the [Lame Download Page](https://lame.buanzo.org/#lamewindl) and download the EXE or ZIP file.
+2. Navigate to the directory Lame was installed in (most commonly `C:\Program Files (x86)\Lame For Audacity`).
+3. Add the directory to your [Environment Variables](https://www.java.com/en/download/help/path.xml).
 
 Examples
 --------
