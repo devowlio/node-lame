@@ -1,6 +1,6 @@
 import { LameStatus, Options } from "./LameTypings";
 import { LameOptions } from "./LameOptions";
-import { existsSync as fsExistsSync, readFile as fsReadFile, writeFile as fsWriteFile, writeFileSync as fsWriteFileSync, unlink as fsUnlink } from "fs";
+import { existsSync as fsExistsSync, readFile as fsReadFile, writeFile as fsWriteFile, writeFileSync as fsWriteFileSync, unlinkSync as fsUnlink } from "fs";
 import { isBuffer as utilIsBuffer } from "util";
 import { spawn } from "child_process";
 import { EventEmitter } from "events";
