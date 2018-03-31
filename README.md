@@ -21,12 +21,6 @@ You can install it with `npm`:
 $ npm install --save node-lame
 ```
 
-If you write in Typescipt 2 or newer, you can install typings:
-
-``` bash
-$ npm install --save git://github.com/jankarres/types-node-lame/
-```
-
 If you have not installed [LAME](http://lame.sourceforge.net/) yet, please use the following instruction.
 
 ### Install on Debian
