@@ -38,8 +38,6 @@ testCase("Lame class", () => {
                 .catch((error) => {
                     errorCaught = true;
 
-                    fs.unlink(OUTPUTFILE);
-
                     const expected = "lame: Warning: unsupported audio format";
                     const actuall = error.message;
 

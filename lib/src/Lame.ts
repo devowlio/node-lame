@@ -1,6 +1,6 @@
 import { LameStatus, Options } from "./LameTypings";
 import { LameOptions } from "./LameOptions";
-import { existsSync as fsExistsSync, readFile as fsReadFile, writeFile as fsWriteFile, writeFileSync as fsWriteFileSync, unlink as fsUnlink } from "fs";
+import { existsSync as fsExistsSync, readFile as fsReadFile, writeFile as fsWriteFile, writeFileSync as fsWriteFileSync, unlinkSync as fsUnlinkSync } from "fs";
 import { isBuffer as utilIsBuffer } from "util";
 import { spawn } from "child_process";
 import { EventEmitter } from "events";
@@ -138,7 +138,7 @@ class Lame {
 	 * 
 	 * @return {Promise}
 	 */
-	private progress(type: "encode" | "decode"): Promise<boolean> {
+	private progress(type: "encode" | "decode"): Promise<any> {
 		if (this.filePath == undefined && this.fileBuffer == undefined) {
 			throw new Error("Audio file to encode is not set");
 		}
@@ -306,14 +306,14 @@ class Lame {
 			this.emitter.on("finish", () => {
 				// If input was buffer, remove temp file
 				if (this.fileBufferTempFilePath != undefined) {
-					fsUnlink(this.fileBufferTempFilePath);
+					fsUnlinkSync(this.fileBufferTempFilePath);
 				}
 
 				// If output should be a buffer, load decoded/encoded audio file in object and remove temp file
 				if (this.options.output == "buffer") {
 					fsReadFile(this.progressedBufferTempFilePath, null, (error, data: string) => {
 						// Remove temp decoded/encoded file
-						fsUnlink(this.progressedBufferTempFilePath);
+						fsUnlinkSync(this.progressedBufferTempFilePath);
 
 						if (error) {
 							reject(error);
@@ -369,21 +369,11 @@ class Lame {
 	 */
 	private removeTempFilesOnError() {
 		if (this.fileBufferTempFilePath != undefined) {
-			try {
-				fsUnlink(this.fileBufferTempFilePath);
-			}
-			catch (error) {
-				// Ignore
-			}
+			fsUnlinkSync(this.fileBufferTempFilePath);
 		}
 
 		if (this.progressedBufferTempFilePath != undefined) {
-			try {
-				fsUnlink(this.progressedBufferTempFilePath);
-			}
-			catch (error) {
-				// Ignore; actually already unlinked
-			}
+			fsUnlinkSync(this.progressedBufferTempFilePath);
 		}
 	}
 }

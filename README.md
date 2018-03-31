@@ -10,7 +10,7 @@ Requirements
 
 * Linux or Mac OS (This package is NOT tested on Windows.)
 * Lame Installed (View instructions below.)
-* Node 6.9.* or newer
+* Node 8.11.* or newer
 
 Installation
 ------------

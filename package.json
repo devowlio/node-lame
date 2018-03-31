@@ -30,9 +30,10 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=6.9"
+    "node": ">=8.11"
   },
   "scripts": {
+    "build": "tsc",
     "test": "./node_modules/.bin/mocha"
   },
   "files": [
@@ -47,7 +48,7 @@
     "@types/chai": "^3.4.35",
     "@types/fs-promise": "^1.0.3",
     "@types/mocha": "^2.2.40",
-    "@types/node": "^7.0.13",
+    "@types/node": "^8.10.1",
     "chai": "^3.5.0",
     "fs-promise": "^2.0.2",
     "mocha": "^3.2.0",
