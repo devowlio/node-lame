@@ -1,15 +1,15 @@
 {
-  "defaultSeverity": "error",
-  "extends": [
-    "tslint:recommended",
-    "tslint-config-airbnb",
-    "tslint-config-prettier"
-  ],
-  "jsRules": {
-    "indent": [true, "spaces", 4]
-  },
-  "rules": {
-    "indent": [true, "spaces", 4]
-  },
-  "rulesDirectory": []
+    "defaultSeverity": "error",
+    "extends": [
+        "tslint:recommended",
+        "tslint-config-airbnb",
+        "tslint-config-prettier"
+    ],
+    "jsRules": {
+        "indent": [true, "spaces", 4]
+    },
+    "rules": {
+        "indent": [true, "spaces", 4]
+    },
+    "rulesDirectory": []
 }
