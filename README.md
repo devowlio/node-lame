@@ -6,9 +6,9 @@ The encoder reads WAV-, MP1-, MP2- and MP3-format and encodes it into an MP3 fil
 
 ## Requirements
 
-- Linux or Mac OS (This package is NOT tested on Windows)
-- Lame Installed (View instructions below)
-- Node 10.13.\* or newer
+-   Linux or MacOS (This package is NOT tested on Windows)
+-   Lame Installed (View instructions below)
+-   Node 10.13.\* or newer
 
 ## Installation
 
@@ -26,7 +26,7 @@ If you have not installed [LAME](http://lame.sourceforge.net/) yet, please use t
 $ sudo apt-get install lame
 ```
 
-### Install on Mac OS with brew
+### Install on MacOS with brew
 
 ```bash
 $ brew install lame
@@ -46,18 +46,18 @@ $ brew install lame
 const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
-  output: "./audio-files/demo.mp3",
-  bitrate: 192
+    output: "./audio-files/demo.mp3",
+    bitrate: 192
 }).setFile("./audio-files/demo.wav");
 
 encoder
-  .encode()
-  .then(() => {
-    // Encoding finished
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .encode()
+    .then(() => {
+        // Encoding finished
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 ```
 
 ### Encode from file to buffer
@@ -66,19 +66,19 @@ encoder
 const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
-  output: "buffer",
-  bitrate: 192
+    output: "buffer",
+    bitrate: 192
 }).setFile("./audio-files/demo.wav");
 
 encoder
-  .encode()
-  .then(() => {
-    // Encoding finished
-    const buffer = encoder.getBuffer();
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .encode()
+    .then(() => {
+        // Encoding finished
+        const buffer = encoder.getBuffer();
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 ```
 
 ### Encode from buffer to file
@@ -130,18 +130,18 @@ encoder.encode()
 const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
-  output: "buffer",
-  bitrate: 192
+    output: "buffer",
+    bitrate: 192
 }).setFile("./audio-files/demo.wav");
 
 encoder
-  .encode()
-  .then(() => {
-    // Encoding finished
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .encode()
+    .then(() => {
+        // Encoding finished
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 
 const status = encoder.getStatus();
 ```
@@ -152,32 +152,32 @@ const status = encoder.getStatus();
 const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
-  output: "buffer",
-  bitrate: 192
+    output: "buffer",
+    bitrate: 192
 }).setFile("./audio-files/demo.wav");
 
 const emitter = encoder.getEmitter();
 
 emitter.on("progress", ([progress, eta]) => {
-  // On progress of encoding. Progress in percent and estimated time of arrival as mm:ss
+    // On progress of encoding. Progress in percent and estimated time of arrival as mm:ss
 });
 
 emitter.on("finish", () => {
-  // On finish
+    // On finish
 });
 
 emitter.on("error", error => {
-  // On error
+    // On error
 });
 
 encoder
-  .encode()
-  .then(() => {
-    // Encoding finished
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .encode()
+    .then(() => {
+        // Encoding finished
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 ```
 
 ### Decode from file to file
@@ -186,17 +186,17 @@ encoder
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-  output: "./audio-files/demo.wav"
+    output: "./audio-files/demo.wav"
 }).setFile("./audio-files/demo.mp3");
 
 decoder
-  .decode()
-  .then(() => {
-    // Decoding finished
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .decode()
+    .then(() => {
+        // Decoding finished
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 ```
 
 ### Decode from file to buffer
@@ -205,18 +205,18 @@ decoder
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-  output: "buffer"
+    output: "buffer"
 }).setFile("./audio-files/demo.mp3");
 
 decoder
-  .decode()
-  .then(() => {
-    // Decoding finished
-    const buffer = decoder.getBuffer();
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .decode()
+    .then(() => {
+        // Decoding finished
+        const buffer = decoder.getBuffer();
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 ```
 
 ### Decode from buffer to file
@@ -266,17 +266,17 @@ decoder.decode()
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-  output: "buffer"
+    output: "buffer"
 }).setFile("./audio-files/demo.mp3");
 
 decoder
-  .encode()
-  .then(() => {
-    // Decoding finished
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .encode()
+    .then(() => {
+        // Decoding finished
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 
 const status = decoder.getStatus();
 ```
@@ -287,31 +287,31 @@ const status = decoder.getStatus();
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-  output: "buffer"
+    output: "buffer"
 }).setFile("./audio-files/demo.mp3");
 
 const emitter = decoder.getEmitter();
 
 emitter.on("progress", ([progress]) => {
-  // On progress of decoder; in percent
+    // On progress of decoder; in percent
 });
 
 emitter.on("finish", () => {
-  // On finish
+    // On finish
 });
 
 emitter.on("error", error => {
-  // On error
+    // On error
 });
 
 decoder
-  .decode()
-  .then(() => {
-    // Decoding finished
-  })
-  .catch(error => {
-    // Something went wrong
-  });
+    .decode()
+    .then(() => {
+        // Decoding finished
+    })
+    .catch(error => {
+        // Something went wrong
+    });
 ```
 
 ## All options
