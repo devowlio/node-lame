@@ -15,10 +15,12 @@
     "email": "mail@jankarres.com",
     "url": "https://jankarres.com/"
   },
-  "contributors": [{
-    "name": "Elias Porcio",
-    "email": "elias.porcio@gmail.com"
-  }],
+  "contributors": [
+    {
+      "name": "Elias Porcio",
+      "email": "elias.porcio@gmail.com"
+    }
+  ],
   "keywords": [
     "mp3",
     "wav",
@@ -30,7 +32,7 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=8.11"
+    "node": ">=10.13"
   },
   "scripts": {
     "build": "tsc",
