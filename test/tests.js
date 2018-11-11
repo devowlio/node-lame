@@ -36,7 +36,8 @@ testCase("Lame class", () => {
             return instance.encode().catch(error => {
                 errorCaught = true;
 
-                const expected = "lame: Warning: unsupported audio format";
+                const expected =
+                    "lame: Warning: unsupported audio format\nCan't init infile './test/notAWavFile.wav'";
                 const actuall = error.message;
 
                 assert.equal(actuall, expected);
@@ -360,7 +361,8 @@ testCase("Lame class", () => {
             return instance.encode().catch(error => {
                 errorCaught = true;
 
-                const expected = "lame: Warning: unsupported audio format";
+                const expected =
+                    "lame: Warning: unsupported audio format\nCan't init infile './test/notAWavFile.wav'";
                 const actuall = error.message;
 
                 assert.equal(actuall, expected);
