@@ -43,7 +43,6 @@
         "temp/",
         "index.js",
         "index.d.ts",
-        "install.sh",
         "README.md"
     ],
     "dependencies": {},
