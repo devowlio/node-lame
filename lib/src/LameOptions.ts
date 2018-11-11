@@ -3,7 +3,7 @@ import * as fs from "fs";
 
 /**
  * All options of node-lame; build argument array for binary
- * 
+ *
  * @class LameOptions
  */
 class LameOptions {
@@ -188,8 +188,7 @@ class LameOptions {
     private raw(value) {
         if (value == true) {
             return [`-r`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -197,35 +196,45 @@ class LameOptions {
     private swapBytes(value) {
         if (value == true) {
             return [`-x`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
 
     private sfreq(value) {
-        if (value == 8 || value == 11.025 || value == 12 || value == 16 || value == 22.05 || value == 24 || value == 32 || value == 44.1 || value == 48) {
+        if (
+            value == 8 ||
+            value == 11.025 ||
+            value == 12 ||
+            value == 16 ||
+            value == 22.05 ||
+            value == 24 ||
+            value == 32 ||
+            value == 44.1 ||
+            value == 48
+        ) {
             return [`-s`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'sfreq' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'sfreq' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48."
+            );
         }
     }
 
     private bitwidth(value) {
         if (value == 8 || value == 16 || value == 24 || value == 32) {
             return [`--bitwidth`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'sfreq' is not in range of 8, 16, 24 or 32.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'sfreq' is not in range of 8, 16, 24 or 32."
+            );
         }
     }
 
     private signed(value) {
         if (value == true) {
             return [`--signed`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -233,8 +242,7 @@ class LameOptions {
     private unsigned(value) {
         if (value == true) {
             return [`--unsigned`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -242,8 +250,7 @@ class LameOptions {
     private littleEndian(value) {
         if (value == true) {
             return [`--little-endian`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -251,8 +258,7 @@ class LameOptions {
     private bigEndian(value) {
         if (value == true) {
             return [`--big-endian`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -260,8 +266,7 @@ class LameOptions {
     private mp2Input(value) {
         if (value == true) {
             return [`--mp2input`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -269,26 +274,33 @@ class LameOptions {
     private mp3Input(value) {
         if (value == true) {
             return [`--mp3input`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
 
     private mode(value) {
-        if (value == "s" || value == "j" || value == "f" || value == "d" || value == "m" || value == "l" || value == "r") {
+        if (
+            value == "s" ||
+            value == "j" ||
+            value == "f" ||
+            value == "d" ||
+            value == "m" ||
+            value == "l" ||
+            value == "r"
+        ) {
             return [`-m`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'mode' is not in range of 's', 'j', 'f', 'd', 'm', 'l' or 'r'.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'mode' is not in range of 's', 'j', 'f', 'd', 'm', 'l' or 'r'."
+            );
         }
     }
 
     private toMono(value) {
         if (value == true) {
             return [`-a`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -296,26 +308,31 @@ class LameOptions {
     private channelDifferentBlockSize(value) {
         if (value == true) {
             return [`-d`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
 
     private freeformat(value) {
-        if (value == "FreeAmp" || value == "in_mpg123" || value == "l3dec" || value == "LAME" || value == "MAD") {
+        if (
+            value == "FreeAmp" ||
+            value == "in_mpg123" ||
+            value == "l3dec" ||
+            value == "LAME" ||
+            value == "MAD"
+        ) {
             return [`--freeformat`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'mode' is not in range of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'mode' is not in range of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'."
+            );
         }
     }
 
     private disableInfoTag(value) {
         if (value == true) {
             return [`-t`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -325,34 +342,29 @@ class LameOptions {
     }
 
     private scale(value) {
-
         return [`--scale`, value];
     }
 
     private scaleL(value) {
-
         return [`--scale-l`, value];
     }
 
     private scaleR(value) {
-
         return [`--scale-r`, value];
     }
 
     private replaygainFast(value) {
         if (value == true) {
             return [`--replaygain-fast`];
-        }
-        else {
+        } else {
             return undefined;
-        };
+        }
     }
 
     private replaygainAccurate(value) {
         if (value == true) {
             return [`--replaygain-accurate`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -360,8 +372,7 @@ class LameOptions {
     private noreplaygain(value) {
         if (value == true) {
             return [`--noreplaygain`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -369,53 +380,79 @@ class LameOptions {
     private clipDetect(value) {
         if (value == true) {
             return [`--clipdetect`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
 
     private preset(value) {
-        if (value == "medium" || value == "standard" || value == "extreme" || value == "insane") {
+        if (
+            value == "medium" ||
+            value == "standard" ||
+            value == "extreme" ||
+            value == "insane"
+        ) {
             return [`--preset`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'mode' is not in range of 'medium', 'standard', 'extreme' or 'insane'.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'mode' is not in range of 'medium', 'standard', 'extreme' or 'insane'."
+            );
         }
     }
 
     private noasm(value) {
         if (value == "mmx" || value == "3dnow" || value == "sse") {
             return [`--noasm`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'noasm' is not in range of 'mmx', '3dnow' or 'sse'.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'noasm' is not in range of 'mmx', '3dnow' or 'sse'."
+            );
         }
     }
 
     private quality(value) {
         if (value >= 0 && value <= 9) {
             return [`-q`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'quality' is not in range of 0 to 9.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'quality' is not in range of 0 to 9."
+            );
         }
     }
 
     private bitrate(value) {
-        if (value == 8 || value == 16 || value == 24 || value == 32 || value == 40 || value == 48 || value == 56 || value == 64 || value == 80 || value == 96 || value == 112 || value == 128 || value == 144 || value == 160 || value == 192 || value == 224 || value == 256 || value == 320) {
+        if (
+            value == 8 ||
+            value == 16 ||
+            value == 24 ||
+            value == 32 ||
+            value == 40 ||
+            value == 48 ||
+            value == 56 ||
+            value == 64 ||
+            value == 80 ||
+            value == 96 ||
+            value == 112 ||
+            value == 128 ||
+            value == 144 ||
+            value == 160 ||
+            value == 192 ||
+            value == 224 ||
+            value == 256 ||
+            value == 320
+        ) {
             return [`-b`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320."
+            );
         }
     }
 
     private forceBitrate(value) {
         if (value == true) {
             return [`-F`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -423,8 +460,7 @@ class LameOptions {
     private cbr(value) {
         if (value == true) {
             return [`--cbr`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -432,17 +468,17 @@ class LameOptions {
     private abr(value) {
         if (value >= 8 && value <= 310) {
             return [`--abr`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'abr' is not in range of 8 to 310.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'abr' is not in range of 8 to 310."
+            );
         }
     }
 
     private vbr(value) {
         if (value == true) {
             return [`-v`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -450,17 +486,17 @@ class LameOptions {
     private vbrQuality(value) {
         if (value >= 0 && value <= 9) {
             return [`-V`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'vbrQuality' is not in range of 0 to 9.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'vbrQuality' is not in range of 0 to 9."
+            );
         }
     }
 
     private ignoreNoiseInSfb21(value) {
         if (value == true) {
             return [`-Y`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -468,17 +504,17 @@ class LameOptions {
     private emp(value) {
         if (value == "n" || value == 5 || value == "c") {
             return [`-e`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'emp' is not in range of 'n', 5 or 'c'.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'emp' is not in range of 'n', 5 or 'c'."
+            );
         }
     }
 
     private markAsCopyrighted(value) {
         if (value == true) {
             return [`-c`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -486,8 +522,7 @@ class LameOptions {
     private markAsCopy(value) {
         if (value == true) {
             return [`-o`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -495,8 +530,7 @@ class LameOptions {
     private crcErrorProtection(value) {
         if (value == true) {
             return [`-p`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -504,8 +538,7 @@ class LameOptions {
     private nores(value) {
         if (value == true) {
             return [`--nores`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -513,8 +546,7 @@ class LameOptions {
     private strictlyEnforceIso(value) {
         if (value == true) {
             return [`--strictly-enforce-ISO`];
-        }
-        else {
+        } else {
             return undefined;
         }
     }
@@ -536,11 +568,22 @@ class LameOptions {
     }
 
     private resample(value) {
-        if (value == 8 || value == 11.025 || value == 12 || value == 16 || value == 22.05 || value == 24 || value == 32 || value == 44.1 || value == 48) {
+        if (
+            value == 8 ||
+            value == 11.025 ||
+            value == 12 ||
+            value == 16 ||
+            value == 22.05 ||
+            value == 24 ||
+            value == 32 ||
+            value == 44.1 ||
+            value == 48
+        ) {
             return [`--resample`, value];
-        }
-        else {
-            throw new Error("lame: Invalid option: 'resample' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48.");
+        } else {
+            throw new Error(
+                "lame: Invalid option: 'resample' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48."
+            );
         }
     }
 
@@ -548,52 +591,64 @@ class LameOptions {
         for (const key in metaObj) {
             const value = metaObj[key];
 
-            if (key == "title" || key == "artist" || key == "album" || key == "year" || key == "comment" || key == "track" || key == "genre" || key == "artwork" || key == "genre-list" || key == "pad-id3v2-size") {
+            if (
+                key == "title" ||
+                key == "artist" ||
+                key == "album" ||
+                key == "year" ||
+                key == "comment" ||
+                key == "track" ||
+                key == "genre" ||
+                key == "artwork" ||
+                key == "genre-list" ||
+                key == "pad-id3v2-size"
+            ) {
                 let arg0;
                 if (key == "title") {
                     arg0 = `--tt`;
-                }
-                else if (key == "artist") {
+                } else if (key == "artist") {
                     arg0 = `--ta`;
-                }
-                else if (key == "album") {
+                } else if (key == "album") {
                     arg0 = `--tl`;
-                }
-                else if (key == "year") {
+                } else if (key == "year") {
                     arg0 = `--ty`;
-                }
-                else if (key == "comment") {
+                } else if (key == "comment") {
                     arg0 = `--tc`;
-                }
-                else if (key == "track") {
+                } else if (key == "track") {
                     arg0 = `--tn`;
-                }
-                else if (key == "genre") {
+                } else if (key == "genre") {
                     arg0 = `--tg`;
-                }
-                else if (key == "artwork") {
+                } else if (key == "artwork") {
                     arg0 = `--ti`;
-                }
-                else if (key == "genre-list") {
+                } else if (key == "genre-list") {
                     arg0 = `--genre-list`;
-                }
-                else if (key == "pad-id3v2-size") {
+                } else if (key == "pad-id3v2-size") {
                     arg0 = `--pad-id3v2-size`;
-                }
-                else {
-                    throw new Error(`lame: Invalid option: 'meta' unknown property '${key}'`);
+                } else {
+                    throw new Error(
+                        `lame: Invalid option: 'meta' unknown property '${key}'`
+                    );
                 }
 
                 const arg1 = `${value}`;
 
                 this.args.push(arg0);
                 this.args.push(arg1);
-            }
-            else if (key == "add-id3v2" || key == "id3v1-only" || key == "id3v2-only" || key == "id3v2-latin1" || key == "id3v2-utf16" || key == "space-id3v1" || key == "pad-id3v2" || key == "ignore-tag-errors") {
+            } else if (
+                key == "add-id3v2" ||
+                key == "id3v1-only" ||
+                key == "id3v2-only" ||
+                key == "id3v2-latin1" ||
+                key == "id3v2-utf16" ||
+                key == "space-id3v1" ||
+                key == "pad-id3v2" ||
+                key == "ignore-tag-errors"
+            ) {
                 this.args.push(`--${key}`);
-            }
-            else {
-                throw new Error(`lame: Invalid option: 'meta' unknown property '${key}'`);
+            } else {
+                throw new Error(
+                    `lame: Invalid option: 'meta' unknown property '${key}'`
+                );
             }
         }
 

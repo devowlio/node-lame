@@ -1,23 +1,20 @@
 const testCase = require("mocha").describe;
-const pre = require("mocha").before;
 const assertions = require("mocha").it;
 const assert = require("chai").assert;
 const fs = require("fs");
-const fsp = require("fs-promise");
-const util = require("util");
+const fsp = require("fs-extra");
 
 const Lame = require("../index").Lame;
 
 testCase("Lame class", () => {
-
-    const TESTFILE_DURATION = 12;   //Audio duration of the Testfile in seconds
-    const RESULT_DURATION_TOLERANCE = 1;   //Max difference between Testfile duration and converted file duration in seconds
-    const EXPECTED_WAV_SIZE = 2142500;   //Size of an correctly converted wav file in bytes
-    const WAV_SIZE_TOLERANCE = 500;   //Max difference between EXPECTED_WAV_SIZE and the actual size of the converted file
+    const TEST_FILE_DURATION = 12; // Audio duration of the TEST_FILE in seconds
+    const RESULT_DURATION_TOLERANCE = 1; // Max difference between TEST_FILE duration and converted file duration in seconds
+    const EXPECTED_WAV_SIZE = 2142500; // Size of an correctly converted wav file in bytes
+    const WAV_SIZE_TOLERANCE = 500; // Max difference between EXPECTED_WAV_SIZE and the actual size of the converted file
 
     testCase("Encode to .mp3", () => {
-        const TESTFILE = "./test/example.wav";
-        const OUTPUTFILE = "./test/encoded.mp3";
+        const TEST_FILE = "./test/example.wav";
+        const OUTPUT_FILE = "./test/encoded.mp3";
 
         /**
          * @testname Set invalid wav file
@@ -28,22 +25,22 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
             instance.setFile("./test/notAWavFile.wav");
 
-            return instance.encode()
-                .catch((error) => {
-                    errorCaught = true;
+            return instance.encode().catch(error => {
+                errorCaught = true;
 
-                    const expected = "lame: Warning: unsupported audio format";
-                    const actuall = error.message;
+                const expected =
+                    "lame: Warning: unsupported audio format\nCan't init infile './test/notAWavFile.wav'";
+                const actual = error.message;
 
-                    assert.equal(actuall, expected);
-                    assert.isTrue(errorCaught);
-                });
+                assert.equal(actual, expected);
+                assert.isTrue(errorCaught);
+            });
         });
 
         /**
@@ -54,25 +51,27 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
-            return instance.encode()
-                .then(() => {
-                    // Test expected file duration
-                    return fsp.stat(OUTPUTFILE)
-                        .then((stats) => {
-                            const size = stats.size;
-                            const resultDuration = (size * 8) / (targetBitrate * 1000);
-                            fs.unlinkSync(OUTPUTFILE);
+            return instance.encode().then(() => {
+                // Test expected file duration
+                return fsp.stat(OUTPUT_FILE).then(stats => {
+                    const size = stats.size;
+                    const resultDuration = (size * 8) / (targetBitrate * 1000);
+                    fs.unlinkSync(OUTPUT_FILE);
 
-                            const isDurationWithinTolerance = (TESTFILE_DURATION - resultDuration) < RESULT_DURATION_TOLERANCE && TESTFILE_DURATION - resultDuration > ((-1) * RESULT_DURATION_TOLERANCE);
-                            assert.isTrue(isDurationWithinTolerance);
-                        })
+                    const isDurationWithinTolerance =
+                        TEST_FILE_DURATION - resultDuration <
+                            RESULT_DURATION_TOLERANCE &&
+                        TEST_FILE_DURATION - resultDuration >
+                            -1 * RESULT_DURATION_TOLERANCE;
+                    assert.isTrue(isDurationWithinTolerance);
                 });
+            });
         });
 
         /**
@@ -84,23 +83,26 @@ testCase("Lame class", () => {
             const output = "buffer";
 
             const instance = new Lame({
-                "output": output,
-                "bitrate": targetBitrate
+                output: output,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
-            return instance.encode()
-                .then(() => {
-                    // Test expected file duration
-                    const buffer = instance.getBuffer();
+            return instance.encode().then(() => {
+                // Test expected file duration
+                const buffer = instance.getBuffer();
 
-                    const size = buffer.byteLength;
-                    resultDuration = (size * 8) / (targetBitrate * 1000);
+                const size = buffer.byteLength;
+                resultDuration = (size * 8) / (targetBitrate * 1000);
 
-                    const isDurationWithinTolerance = (TESTFILE_DURATION - resultDuration < RESULT_DURATION_TOLERANCE && TESTFILE_DURATION - resultDuration > (-1) * RESULT_DURATION_TOLERANCE);
-                    assert(isDurationWithinTolerance);
-                });
+                const isDurationWithinTolerance =
+                    TEST_FILE_DURATION - resultDuration <
+                        RESULT_DURATION_TOLERANCE &&
+                    TEST_FILE_DURATION - resultDuration >
+                        -1 * RESULT_DURATION_TOLERANCE;
+                assert(isDurationWithinTolerance);
+            });
         });
 
         /**
@@ -110,28 +112,31 @@ testCase("Lame class", () => {
         assertions("Encode buffer to file", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE)
-                .then((inputBuffer) => {
-                    const instance = new Lame({
-                        "output": OUTPUTFILE,
-                        "bitrate": targetBitrate
-                    });
-
-                    instance.setBuffer(inputBuffer);
-
-                    return instance.encode()
-                        .then(() => {
-                            // Test expected file duration
-                            return fsp.stat(OUTPUTFILE).then((stats) => {
-                                const size = stats.size;
-                                const resultDuration = (size * 8) / (targetBitrate * 1000);
-                                fs.unlinkSync(OUTPUTFILE);
-
-                                const isDurationWithinTolerance = (TESTFILE_DURATION - resultDuration) < RESULT_DURATION_TOLERANCE && TESTFILE_DURATION - resultDuration > ((-1) * RESULT_DURATION_TOLERANCE);
-                                assert.isTrue(isDurationWithinTolerance);
-                            })
-                        });
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
+                const instance = new Lame({
+                    output: OUTPUT_FILE,
+                    bitrate: targetBitrate
                 });
+
+                instance.setBuffer(inputBuffer);
+
+                return instance.encode().then(() => {
+                    // Test expected file duration
+                    return fsp.stat(OUTPUT_FILE).then(stats => {
+                        const size = stats.size;
+                        const resultDuration =
+                            (size * 8) / (targetBitrate * 1000);
+                        fs.unlinkSync(OUTPUT_FILE);
+
+                        const isDurationWithinTolerance =
+                            TEST_FILE_DURATION - resultDuration <
+                                RESULT_DURATION_TOLERANCE &&
+                            TEST_FILE_DURATION - resultDuration >
+                                -1 * RESULT_DURATION_TOLERANCE;
+                        assert.isTrue(isDurationWithinTolerance);
+                    });
+                });
+            });
         });
 
         /**
@@ -141,33 +146,34 @@ testCase("Lame class", () => {
         assertions("Encode buffer to buffer", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE)
-                .then((inputBuffer) => {
-
-                    const instance = new Lame({
-                        "output": "buffer",
-                        "bitrate": targetBitrate
-                    });
-                    instance.setBuffer(inputBuffer);
-
-                    return instance.encode()
-                        .then(() => {
-                            // Test expected file duration
-                            const buffer = instance.getBuffer();
-
-                            const size = buffer.byteLength;
-                            const resultDuration = (size * 8) / (targetBitrate * 1000);
-
-                            const isDurationWithinTolerance = (TESTFILE_DURATION - resultDuration) < RESULT_DURATION_TOLERANCE && TESTFILE_DURATION - resultDuration > ((-1) * RESULT_DURATION_TOLERANCE);
-                            assert.isTrue(isDurationWithinTolerance);
-                        });
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
+                const instance = new Lame({
+                    output: "buffer",
+                    bitrate: targetBitrate
                 });
+                instance.setBuffer(inputBuffer);
+
+                return instance.encode().then(() => {
+                    // Test expected file duration
+                    const buffer = instance.getBuffer();
+
+                    const size = buffer.byteLength;
+                    const resultDuration = (size * 8) / (targetBitrate * 1000);
+
+                    const isDurationWithinTolerance =
+                        TEST_FILE_DURATION - resultDuration <
+                            RESULT_DURATION_TOLERANCE &&
+                        TEST_FILE_DURATION - resultDuration >
+                            -1 * RESULT_DURATION_TOLERANCE;
+                    assert.isTrue(isDurationWithinTolerance);
+                });
+            });
         });
     });
 
     testCase("Decode to .wav", () => {
-        const TESTFILE = "./test/example.mp3";
-        const OUTPUTFILE = "./test/converted.wav";
+        const TEST_FILE = "./test/example.mp3";
+        const OUTPUT_FILE = "./test/converted.wav";
 
         /**
          * @testname Set invalid wav file
@@ -178,22 +184,22 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
             instance.setFile("./test/notAnMp3File.mp3");
 
-            return instance.decode()
-                .catch((error) => {
-                    errorCaught = true;
+            return instance.decode().catch(error => {
+                errorCaught = true;
 
-                    const expected = "lame: Error reading headers in mp3 input file ./test/notAnMp3File.mp3.\nCan't init infile './test/notAnMp3File.mp3'";
-                    const actuall = error.message;
+                const expected =
+                    "lame: Error reading headers in mp3 input file ./test/notAnMp3File.mp3.\nCan't init infile './test/notAnMp3File.mp3'";
+                const actual = error.message;
 
-                    assert.equal(actuall, expected);
-                    assert.isTrue(errorCaught);
-                });
+                assert.equal(actual, expected);
+                assert.isTrue(errorCaught);
+            });
         });
 
         /**
@@ -204,24 +210,25 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
-            return instance.decode()
-                .then(() => {
-                    // Test expected file size
-                    return fsp.stat(OUTPUTFILE)
-                        .then((stats) => {
-                            fs.unlinkSync(OUTPUTFILE);
+            return instance.decode().then(() => {
+                // Test expected file size
+                return fsp.stat(OUTPUT_FILE).then(stats => {
+                    fs.unlinkSync(OUTPUT_FILE);
 
-                            const actualSize = stats.size;
-                            const isSizeWithinTolerance = (EXPECTED_WAV_SIZE - actualSize) < WAV_SIZE_TOLERANCE && EXPECTED_WAV_SIZE - actualSize > ((-1) * WAV_SIZE_TOLERANCE);
-                            assert.isTrue(isSizeWithinTolerance);
-                        })
+                    const actualSize = stats.size;
+                    const isSizeWithinTolerance =
+                        EXPECTED_WAV_SIZE - actualSize < WAV_SIZE_TOLERANCE &&
+                        EXPECTED_WAV_SIZE - actualSize >
+                            -1 * WAV_SIZE_TOLERANCE;
+                    assert.isTrue(isSizeWithinTolerance);
                 });
+            });
         });
 
         /**
@@ -233,21 +240,22 @@ testCase("Lame class", () => {
             const output = "buffer";
 
             const instance = new Lame({
-                "output": output,
-                "bitrate": targetBitrate
+                output: output,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
-            return instance.decode()
-                .then(() => {
-                    // Test expected file size
-                    const buffer = instance.getBuffer();
+            return instance.decode().then(() => {
+                // Test expected file size
+                const buffer = instance.getBuffer();
 
-                    const actualSize = buffer.byteLength;
-                    const isSizeWithinTolerance = (EXPECTED_WAV_SIZE - actualSize) < WAV_SIZE_TOLERANCE && EXPECTED_WAV_SIZE - actualSize > ((-1) * WAV_SIZE_TOLERANCE);
-                    assert.isTrue(isSizeWithinTolerance);
-                });
+                const actualSize = buffer.byteLength;
+                const isSizeWithinTolerance =
+                    EXPECTED_WAV_SIZE - actualSize < WAV_SIZE_TOLERANCE &&
+                    EXPECTED_WAV_SIZE - actualSize > -1 * WAV_SIZE_TOLERANCE;
+                assert.isTrue(isSizeWithinTolerance);
+            });
         });
 
         /**
@@ -257,28 +265,29 @@ testCase("Lame class", () => {
         assertions("Decode buffer to file", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE)
-                .then((inputBuffer) => {
-                    const instance = new Lame({
-                        "output": OUTPUTFILE,
-                        "bitrate": targetBitrate
-                    });
-
-                    instance.setBuffer(inputBuffer);
-
-                    return instance.decode()
-                        .then(() => {
-                            // Test expected file size
-                            return fsp.stat(OUTPUTFILE)
-                                .then((stats) => {
-                                    fs.unlinkSync(OUTPUTFILE);
-
-                                    const actualSize = stats.size;
-                                    const isSizeWithinTolerance = (EXPECTED_WAV_SIZE - actualSize) < WAV_SIZE_TOLERANCE && EXPECTED_WAV_SIZE - actualSize > ((-1) * WAV_SIZE_TOLERANCE);
-                                    assert.isTrue(isSizeWithinTolerance);
-                                })
-                        });
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
+                const instance = new Lame({
+                    output: OUTPUT_FILE,
+                    bitrate: targetBitrate
                 });
+
+                instance.setBuffer(inputBuffer);
+
+                return instance.decode().then(() => {
+                    // Test expected file size
+                    return fsp.stat(OUTPUT_FILE).then(stats => {
+                        fs.unlinkSync(OUTPUT_FILE);
+
+                        const actualSize = stats.size;
+                        const isSizeWithinTolerance =
+                            EXPECTED_WAV_SIZE - actualSize <
+                                WAV_SIZE_TOLERANCE &&
+                            EXPECTED_WAV_SIZE - actualSize >
+                                -1 * WAV_SIZE_TOLERANCE;
+                        assert.isTrue(isSizeWithinTolerance);
+                    });
+                });
+            });
         });
 
         /**
@@ -288,48 +297,47 @@ testCase("Lame class", () => {
         assertions("Decode buffer to buffer", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE)
-                .then((inputBuffer) => {
-
-                    const instance = new Lame({
-                        "output": "buffer",
-                        "bitrate": targetBitrate
-                    });
-                    instance.setBuffer(inputBuffer);
-
-                    return instance.decode()
-                        .then(() => {
-                            // Test expected file size
-                            const buffer = instance.getBuffer();
-
-                            const actualSize = buffer.byteLength;
-                            const isSizeWithinTolerance = (EXPECTED_WAV_SIZE - actualSize) < WAV_SIZE_TOLERANCE && EXPECTED_WAV_SIZE - actualSize > ((-1) * WAV_SIZE_TOLERANCE);
-                            assert.isTrue(isSizeWithinTolerance);
-                        });
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
+                const instance = new Lame({
+                    output: "buffer",
+                    bitrate: targetBitrate
                 });
+                instance.setBuffer(inputBuffer);
+
+                return instance.decode().then(() => {
+                    // Test expected file size
+                    const buffer = instance.getBuffer();
+
+                    const actualSize = buffer.byteLength;
+                    const isSizeWithinTolerance =
+                        EXPECTED_WAV_SIZE - actualSize < WAV_SIZE_TOLERANCE &&
+                        EXPECTED_WAV_SIZE - actualSize >
+                            -1 * WAV_SIZE_TOLERANCE;
+                    assert.isTrue(isSizeWithinTolerance);
+                });
+            });
         });
     });
 
     testCase("Other", () => {
-        const TESTFILE = "./test/example.wav";
-        const OUTPUTFILE = "./test/encoded.mp3";
+        const TEST_FILE = "./test/example.wav";
+        const OUTPUT_FILE = "./test/encoded.mp3";
 
         /**
          * @testname Option output required
-         * Call Lame constructor with empty options obbject
+         * Call Lame constructor with empty options object
          */
         assertions("Option output required", () => {
             let errorCaught = false;
 
             try {
                 const instance = new Lame({});
-            }
-            catch (error) {
+            } catch (error) {
                 errorCaught = true;
                 const expected = "lame: Invalid option: 'output' is required";
-                const actuall = error.message;
+                const actual = error.message;
 
-                assert.equal(actuall, expected);
+                assert.equal(actual, expected);
             }
 
             assert.isTrue(errorCaught);
@@ -343,21 +351,21 @@ testCase("Lame class", () => {
             let errorCaught = false;
 
             const instance = new Lame({
-                "output": OUTPUTFILE
+                output: OUTPUT_FILE
             });
 
             instance.setFile("./test/notAWavFile.wav");
 
-            return instance.encode()
-                .catch((error) => {
-                    errorCaught = true;
+            return instance.encode().catch(error => {
+                errorCaught = true;
 
-                    const expected = "lame: Warning: unsupported audio format";
-                    const actuall = error.message;
+                const expected =
+                    "lame: Warning: unsupported audio format\nCan't init infile './test/notAWavFile.wav'";
+                const actual = error.message;
 
-                    assert.equal(actuall, expected);
-                    assert.isTrue(errorCaught);
-                })
+                assert.equal(actual, expected);
+                assert.isTrue(errorCaught);
+            });
         });
 
         /**
@@ -369,18 +377,17 @@ testCase("Lame class", () => {
 
             try {
                 const instance = new Lame({
-                    "output": OUTPUTFILE
+                    output: OUTPUT_FILE
                 });
 
                 instance.setFile("./test/not-existing.wav");
-            }
-            catch (error) {
+            } catch (error) {
                 errorCaught = true;
 
                 const expected = "Audio file (path) dose not exist";
-                const actuall = error.message;
+                const actual = error.message;
 
-                assert.equal(actuall, expected);
+                assert.equal(actual, expected);
             }
 
             assert.isTrue(errorCaught);
@@ -394,11 +401,11 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             const actual = instance.getStatus();
 
@@ -413,24 +420,23 @@ testCase("Lame class", () => {
         });
 
         /**
-         * @testname Get status object during convertion
+         * @testname Get status object during converting
          * Setup the converter properly, call the encode function and immediately read the status object.
          */
-        assertions("Get status object during convertion", () => {
+        assertions("Get status object during converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
             const emitter = instance.getEmitter();
 
-            instance.encode()
-                .then(() => {
-                    fs.unlinkSync(OUTPUTFILE);
-                });
+            instance.encode().then(() => {
+                fs.unlinkSync(OUTPUT_FILE);
+            });
 
             const actual = instance.getStatus();
             const expected = {
@@ -438,60 +444,58 @@ testCase("Lame class", () => {
                 finished: false,
                 progress: 0,
                 eta: undefined
-            }
+            };
 
             assert.deepEqual(actual, expected);
 
             // Ensure next test will executed after finishing encoding
-            return new Promise((resolve, rejetct) => {
+            return new Promise(resolve => {
                 emitter.on("finish", resolve);
             });
         });
 
         /**
-         * @testname Get status object after convertion
+         * @testname Get status object after converting
          * Setup the converter properly, call the encode function and read the status object afterwards.
          */
-        assertions("Get status object after convertion", () => {
+        assertions("Get status object after converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
-            return instance.encode()
-                .then(() => {
-                    const actual = instance.getStatus();
+            return instance.encode().then(() => {
+                const actual = instance.getStatus();
 
-                    const expected = {
-                        started: true,
-                        finished: true,
-                        progress: 100,
-                        eta: "00:00"
-                    }
+                const expected = {
+                    started: true,
+                    finished: true,
+                    progress: 100,
+                    eta: "00:00"
+                };
 
-                    fs.unlinkSync(OUTPUTFILE);
-                    assert.deepEqual(actual, expected);
-                });
+                fs.unlinkSync(OUTPUT_FILE);
+                assert.deepEqual(actual, expected);
+            });
         });
 
-
         /**
-         * @testname Get status eventEmitter successful convertion
+         * @testname Get status eventEmitter successful converting
          * Setup the converter properly, call the encode function and check if progress and finish were emitted.
          */
-        assertions("Get status eventEmitter successful convertion", () => {
+        assertions("Get status eventEmitter successful converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             const emitter = instance.getEmitter();
 
@@ -505,31 +509,30 @@ testCase("Lame class", () => {
             emitter.on("finish", () => {
                 finishTriggered = true;
 
-                fs.unlinkSync(OUTPUTFILE);
+                fs.unlinkSync(OUTPUT_FILE);
             });
 
-            emitter.on("error", (error) => {
+            emitter.on("error", error => {
                 assert.isTrue(false);
             });
 
-            return instance.encode()
-                .then(() => {
-                    // error expected is irrelevant for this test
-                    assert.isTrue(progressTriggered);
-                    assert.isTrue(finishTriggered);
-                });
+            return instance.encode().then(() => {
+                // error expected is irrelevant for this test
+                assert.isTrue(progressTriggered);
+                assert.isTrue(finishTriggered);
+            });
         });
 
         /**
-         * @testname Get status eventEmitter unsuccessful convertion
+         * @testname Get status eventEmitter unsuccessful converting
          * Setup the converter with invalid source file, call the encode function and check if an error is emitted.
          */
-        assertions("Get status eventEmitter unsuccessful convertion", () => {
+        assertions("Get status eventEmitter unsuccessful converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": targetBitrate
+                output: OUTPUT_FILE,
+                bitrate: targetBitrate
             });
 
             instance.setFile("./test/notAWavFile.wav");
@@ -538,82 +541,81 @@ testCase("Lame class", () => {
 
             let errorTriggered = false;
 
-            emitter.on("error", (error) => {
+            emitter.on("error", error => {
                 errorTriggered = true;
             });
 
-            return instance.encode()
-                .catch(() => {
-                    return new Promise((resove, reject) => {
-                        setTimeout(() => {
-                            assert.isTrue(errorTriggered);
+            return instance.encode().catch(() => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        assert.isTrue(errorTriggered);
 
-                            resove();
-                        }, 500);
-                    });
+                        resolve();
+                    }, 500);
                 });
+            });
         });
 
         /**
-        * @testname Options
-        * Specifiy optional Options and check if they are set in the options object.
-        */
+         * @testname Options
+         * Specify optional Options and check if they are set in the options object.
+         */
         assertions("Options", () => {
             const instance = new Lame({
-                "output": OUTPUTFILE,
-                "bitrate": 128,
-                "raw": true,
+                output: OUTPUT_FILE,
+                bitrate: 128,
+                raw: true,
                 "swap-bytes": true,
-                "sfreq": 22.05,
-                "bitwidth": 32,
-                "signed": true,
-                "unsigned": true,
+                sfreq: 22.05,
+                bitwidth: 32,
+                signed: true,
+                unsigned: true,
                 "little-endian": true,
                 "big-endian": true,
-                "mp2Input": true,
-                "mp3Input": true,
-                "mode": "r",
+                mp2Input: true,
+                mp3Input: true,
+                mode: "r",
                 "to-mono": true,
                 "channel-different-block-sizes": true,
-                "freeformat": "FreeAmp",
+                freeformat: "FreeAmp",
                 "disable-info-tag": true,
-                "comp": 5,
-                "scale": 2,
+                comp: 5,
+                scale: 2,
                 "scale-l": 1,
                 "scale-r": 3,
                 "replaygain-fast": true,
                 "replaygain-accurate": true,
                 "no-replaygain": true,
                 "clip-detect": true,
-                "preset": "medium",
-                "noasm": "sse",
-                "quality": 3,
+                preset: "medium",
+                noasm: "sse",
+                quality: 3,
                 "force-bitrate": true,
-                "cbr": true,
-                "abr": 45,
-                "vbr": true,
+                cbr: true,
+                abr: 45,
+                vbr: true,
                 "vbr-quality": 6,
                 "ignore-noise-in-sfb21": true,
-                "emp": "5",
+                emp: "5",
                 "mark-as-copyrighted": true,
                 "mark-as-copy": true,
                 "crc-error-protection": true,
-                "nores": true,
+                nores: true,
                 "strictly-enforce-ISO": true,
-                "lowpass": 55,
+                lowpass: 55,
                 "lowpass-width": 9,
-                "highpass": 400,
+                highpass: 400,
                 "highpass-width": 4,
-                "resample": 44.1,
-                "meta": {
-                    "title": "test title",
-                    "artist": "test artist",
-                    "album": "test album",
-                    "year": "2017",
-                    "comment": "test comment",
-                    "track": "3",
-                    "genre": "test genre",
-                    "artwork": "testpic.jpg",
+                resample: 44.1,
+                meta: {
+                    title: "test title",
+                    artist: "test artist",
+                    album: "test album",
+                    year: "2017",
+                    comment: "test comment",
+                    track: "3",
+                    genre: "test genre",
+                    artwork: "testpic.jpg",
                     "add-id3v2": true,
                     "id3v1-only": true,
                     "id3v2-only": true,
@@ -626,106 +628,105 @@ testCase("Lame class", () => {
                     "genre-list": "test, genres"
                 }
             });
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             expected = [
-                '-b',
+                "-b",
                 128,
-                '-r',
-                '-x',
-                '-s',
+                "-r",
+                "-x",
+                "-s",
                 22.05,
-                '--bitwidth',
+                "--bitwidth",
                 32,
-                '--signed',
-                '--unsigned',
-                '--little-endian',
-                '--big-endian',
-                '--mp2input',
-                '--mp3input',
-                '-m',
-                'r',
-                '-a',
-                '-d',
-                '--freeformat',
-                'FreeAmp',
-                '-t',
-                '--comp',
+                "--signed",
+                "--unsigned",
+                "--little-endian",
+                "--big-endian",
+                "--mp2input",
+                "--mp3input",
+                "-m",
+                "r",
+                "-a",
+                "-d",
+                "--freeformat",
+                "FreeAmp",
+                "-t",
+                "--comp",
                 5,
-                '--scale',
+                "--scale",
                 2,
-                '--scale-l',
+                "--scale-l",
                 1,
-                '--scale-r',
+                "--scale-r",
                 3,
-                '--replaygain-fast',
-                '--replaygain-accurate',
-                '--noreplaygain',
-                '--clipdetect',
-                '--preset',
-                'medium',
-                '--noasm',
-                'sse',
-                '-q',
+                "--replaygain-fast",
+                "--replaygain-accurate",
+                "--noreplaygain",
+                "--clipdetect",
+                "--preset",
+                "medium",
+                "--noasm",
+                "sse",
+                "-q",
                 3,
-                '-F',
-                '--cbr',
-                '--abr',
+                "-F",
+                "--cbr",
+                "--abr",
                 45,
-                '-v',
-                '-V',
+                "-v",
+                "-V",
                 6,
-                '-Y',
-                '-e',
-                '5',
-                '-c',
-                '-o',
-                '-p',
-                '--nores',
-                '--strictly-enforce-ISO',
-                '--lowpass',
+                "-Y",
+                "-e",
+                "5",
+                "-c",
+                "-o",
+                "-p",
+                "--nores",
+                "--strictly-enforce-ISO",
+                "--lowpass",
                 55,
-                '--lowpass-width',
+                "--lowpass-width",
                 9,
-                '--highpass',
+                "--highpass",
                 400,
-                '--highpass-width',
+                "--highpass-width",
                 4,
-                '--resample',
+                "--resample",
                 44.1,
-                '--tt',
-                'test title',
-                '--ta',
-                'test artist',
-                '--tl',
-                'test album',
-                '--ty',
-                '2017',
-                '--tc',
-                'test comment',
-                '--tn',
-                '3',
-                '--tg',
-                'test genre',
-                '--ti',
-                'testpic.jpg',
-                '--add-id3v2',
-                '--id3v1-only',
-                '--id3v2-only',
-                '--id3v2-latin1',
-                '--id3v2-utf16',
-                '--space-id3v1',
-                '--pad-id3v2',
-                '--pad-id3v2-size',
-                '2',
-                '--ignore-tag-errors',
-                '--genre-list',
-                'test, genres'
+                "--tt",
+                "test title",
+                "--ta",
+                "test artist",
+                "--tl",
+                "test album",
+                "--ty",
+                "2017",
+                "--tc",
+                "test comment",
+                "--tn",
+                "3",
+                "--tg",
+                "test genre",
+                "--ti",
+                "testpic.jpg",
+                "--add-id3v2",
+                "--id3v1-only",
+                "--id3v2-only",
+                "--id3v2-latin1",
+                "--id3v2-utf16",
+                "--space-id3v1",
+                "--pad-id3v2",
+                "--pad-id3v2-size",
+                "2",
+                "--ignore-tag-errors",
+                "--genre-list",
+                "test, genres"
             ];
 
             const actual = instance.args;
             assert.deepEqual(expected, actual);
-
         });
     });
 });

@@ -10,9 +10,7 @@
         "noImplicitAny": false,
         "noImplicitReturns": false
     },
-    "include": [
-        "lib/src/*.ts"
-    ],
+    "include": ["lib/src/*.ts"],
     "formatCodeOptions": {
         "indentSize": 5,
         "tabSize": 5,
