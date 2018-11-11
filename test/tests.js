@@ -1,22 +1,20 @@
 const testCase = require("mocha").describe;
-const pre = require("mocha").before;
 const assertions = require("mocha").it;
 const assert = require("chai").assert;
 const fs = require("fs");
 const fsp = require("fs-extra");
-const util = require("util");
 
 const Lame = require("../index").Lame;
 
 testCase("Lame class", () => {
-    const TESTFILE_DURATION = 12; //Audio duration of the Testfile in seconds
-    const RESULT_DURATION_TOLERANCE = 1; //Max difference between Testfile duration and converted file duration in seconds
-    const EXPECTED_WAV_SIZE = 2142500; //Size of an correctly converted wav file in bytes
-    const WAV_SIZE_TOLERANCE = 500; //Max difference between EXPECTED_WAV_SIZE and the actual size of the converted file
+    const TEST_FILE_DURATION = 12; // Audio duration of the TEST_FILE in seconds
+    const RESULT_DURATION_TOLERANCE = 1; // Max difference between TEST_FILE duration and converted file duration in seconds
+    const EXPECTED_WAV_SIZE = 2142500; // Size of an correctly converted wav file in bytes
+    const WAV_SIZE_TOLERANCE = 500; // Max difference between EXPECTED_WAV_SIZE and the actual size of the converted file
 
     testCase("Encode to .mp3", () => {
-        const TESTFILE = "./test/example.wav";
-        const OUTPUTFILE = "./test/encoded.mp3";
+        const TEST_FILE = "./test/example.wav";
+        const OUTPUT_FILE = "./test/encoded.mp3";
 
         /**
          * @testname Set invalid wav file
@@ -27,7 +25,7 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
@@ -38,9 +36,9 @@ testCase("Lame class", () => {
 
                 const expected =
                     "lame: Warning: unsupported audio format\nCan't init infile './test/notAWavFile.wav'";
-                const actuall = error.message;
+                const actual = error.message;
 
-                assert.equal(actuall, expected);
+                assert.equal(actual, expected);
                 assert.isTrue(errorCaught);
             });
         });
@@ -53,23 +51,23 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             return instance.encode().then(() => {
                 // Test expected file duration
-                return fsp.stat(OUTPUTFILE).then(stats => {
+                return fsp.stat(OUTPUT_FILE).then(stats => {
                     const size = stats.size;
                     const resultDuration = (size * 8) / (targetBitrate * 1000);
-                    fs.unlinkSync(OUTPUTFILE);
+                    fs.unlinkSync(OUTPUT_FILE);
 
                     const isDurationWithinTolerance =
-                        TESTFILE_DURATION - resultDuration <
+                        TEST_FILE_DURATION - resultDuration <
                             RESULT_DURATION_TOLERANCE &&
-                        TESTFILE_DURATION - resultDuration >
+                        TEST_FILE_DURATION - resultDuration >
                             -1 * RESULT_DURATION_TOLERANCE;
                     assert.isTrue(isDurationWithinTolerance);
                 });
@@ -89,7 +87,7 @@ testCase("Lame class", () => {
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             return instance.encode().then(() => {
                 // Test expected file duration
@@ -99,9 +97,9 @@ testCase("Lame class", () => {
                 resultDuration = (size * 8) / (targetBitrate * 1000);
 
                 const isDurationWithinTolerance =
-                    TESTFILE_DURATION - resultDuration <
+                    TEST_FILE_DURATION - resultDuration <
                         RESULT_DURATION_TOLERANCE &&
-                    TESTFILE_DURATION - resultDuration >
+                    TEST_FILE_DURATION - resultDuration >
                         -1 * RESULT_DURATION_TOLERANCE;
                 assert(isDurationWithinTolerance);
             });
@@ -114,9 +112,9 @@ testCase("Lame class", () => {
         assertions("Encode buffer to file", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE).then(inputBuffer => {
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
                 const instance = new Lame({
-                    output: OUTPUTFILE,
+                    output: OUTPUT_FILE,
                     bitrate: targetBitrate
                 });
 
@@ -124,16 +122,16 @@ testCase("Lame class", () => {
 
                 return instance.encode().then(() => {
                     // Test expected file duration
-                    return fsp.stat(OUTPUTFILE).then(stats => {
+                    return fsp.stat(OUTPUT_FILE).then(stats => {
                         const size = stats.size;
                         const resultDuration =
                             (size * 8) / (targetBitrate * 1000);
-                        fs.unlinkSync(OUTPUTFILE);
+                        fs.unlinkSync(OUTPUT_FILE);
 
                         const isDurationWithinTolerance =
-                            TESTFILE_DURATION - resultDuration <
+                            TEST_FILE_DURATION - resultDuration <
                                 RESULT_DURATION_TOLERANCE &&
-                            TESTFILE_DURATION - resultDuration >
+                            TEST_FILE_DURATION - resultDuration >
                                 -1 * RESULT_DURATION_TOLERANCE;
                         assert.isTrue(isDurationWithinTolerance);
                     });
@@ -148,7 +146,7 @@ testCase("Lame class", () => {
         assertions("Encode buffer to buffer", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE).then(inputBuffer => {
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
                 const instance = new Lame({
                     output: "buffer",
                     bitrate: targetBitrate
@@ -163,9 +161,9 @@ testCase("Lame class", () => {
                     const resultDuration = (size * 8) / (targetBitrate * 1000);
 
                     const isDurationWithinTolerance =
-                        TESTFILE_DURATION - resultDuration <
+                        TEST_FILE_DURATION - resultDuration <
                             RESULT_DURATION_TOLERANCE &&
-                        TESTFILE_DURATION - resultDuration >
+                        TEST_FILE_DURATION - resultDuration >
                             -1 * RESULT_DURATION_TOLERANCE;
                     assert.isTrue(isDurationWithinTolerance);
                 });
@@ -174,8 +172,8 @@ testCase("Lame class", () => {
     });
 
     testCase("Decode to .wav", () => {
-        const TESTFILE = "./test/example.mp3";
-        const OUTPUTFILE = "./test/converted.wav";
+        const TEST_FILE = "./test/example.mp3";
+        const OUTPUT_FILE = "./test/converted.wav";
 
         /**
          * @testname Set invalid wav file
@@ -186,7 +184,7 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
@@ -197,9 +195,9 @@ testCase("Lame class", () => {
 
                 const expected =
                     "lame: Error reading headers in mp3 input file ./test/notAnMp3File.mp3.\nCan't init infile './test/notAnMp3File.mp3'";
-                const actuall = error.message;
+                const actual = error.message;
 
-                assert.equal(actuall, expected);
+                assert.equal(actual, expected);
                 assert.isTrue(errorCaught);
             });
         });
@@ -212,16 +210,16 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             return instance.decode().then(() => {
                 // Test expected file size
-                return fsp.stat(OUTPUTFILE).then(stats => {
-                    fs.unlinkSync(OUTPUTFILE);
+                return fsp.stat(OUTPUT_FILE).then(stats => {
+                    fs.unlinkSync(OUTPUT_FILE);
 
                     const actualSize = stats.size;
                     const isSizeWithinTolerance =
@@ -246,7 +244,7 @@ testCase("Lame class", () => {
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             return instance.decode().then(() => {
                 // Test expected file size
@@ -267,9 +265,9 @@ testCase("Lame class", () => {
         assertions("Decode buffer to file", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE).then(inputBuffer => {
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
                 const instance = new Lame({
-                    output: OUTPUTFILE,
+                    output: OUTPUT_FILE,
                     bitrate: targetBitrate
                 });
 
@@ -277,8 +275,8 @@ testCase("Lame class", () => {
 
                 return instance.decode().then(() => {
                     // Test expected file size
-                    return fsp.stat(OUTPUTFILE).then(stats => {
-                        fs.unlinkSync(OUTPUTFILE);
+                    return fsp.stat(OUTPUT_FILE).then(stats => {
+                        fs.unlinkSync(OUTPUT_FILE);
 
                         const actualSize = stats.size;
                         const isSizeWithinTolerance =
@@ -299,7 +297,7 @@ testCase("Lame class", () => {
         assertions("Decode buffer to buffer", () => {
             const targetBitrate = 128;
 
-            return fsp.readFile(TESTFILE).then(inputBuffer => {
+            return fsp.readFile(TEST_FILE).then(inputBuffer => {
                 const instance = new Lame({
                     output: "buffer",
                     bitrate: targetBitrate
@@ -322,12 +320,12 @@ testCase("Lame class", () => {
     });
 
     testCase("Other", () => {
-        const TESTFILE = "./test/example.wav";
-        const OUTPUTFILE = "./test/encoded.mp3";
+        const TEST_FILE = "./test/example.wav";
+        const OUTPUT_FILE = "./test/encoded.mp3";
 
         /**
          * @testname Option output required
-         * Call Lame constructor with empty options obbject
+         * Call Lame constructor with empty options object
          */
         assertions("Option output required", () => {
             let errorCaught = false;
@@ -337,9 +335,9 @@ testCase("Lame class", () => {
             } catch (error) {
                 errorCaught = true;
                 const expected = "lame: Invalid option: 'output' is required";
-                const actuall = error.message;
+                const actual = error.message;
 
-                assert.equal(actuall, expected);
+                assert.equal(actual, expected);
             }
 
             assert.isTrue(errorCaught);
@@ -353,7 +351,7 @@ testCase("Lame class", () => {
             let errorCaught = false;
 
             const instance = new Lame({
-                output: OUTPUTFILE
+                output: OUTPUT_FILE
             });
 
             instance.setFile("./test/notAWavFile.wav");
@@ -363,9 +361,9 @@ testCase("Lame class", () => {
 
                 const expected =
                     "lame: Warning: unsupported audio format\nCan't init infile './test/notAWavFile.wav'";
-                const actuall = error.message;
+                const actual = error.message;
 
-                assert.equal(actuall, expected);
+                assert.equal(actual, expected);
                 assert.isTrue(errorCaught);
             });
         });
@@ -379,7 +377,7 @@ testCase("Lame class", () => {
 
             try {
                 const instance = new Lame({
-                    output: OUTPUTFILE
+                    output: OUTPUT_FILE
                 });
 
                 instance.setFile("./test/not-existing.wav");
@@ -387,9 +385,9 @@ testCase("Lame class", () => {
                 errorCaught = true;
 
                 const expected = "Audio file (path) dose not exist";
-                const actuall = error.message;
+                const actual = error.message;
 
-                assert.equal(actuall, expected);
+                assert.equal(actual, expected);
             }
 
             assert.isTrue(errorCaught);
@@ -403,11 +401,11 @@ testCase("Lame class", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             const actual = instance.getStatus();
 
@@ -422,22 +420,22 @@ testCase("Lame class", () => {
         });
 
         /**
-         * @testname Get status object during convertion
+         * @testname Get status object during converting
          * Setup the converter properly, call the encode function and immediately read the status object.
          */
-        assertions("Get status object during convertion", () => {
+        assertions("Get status object during converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
             const emitter = instance.getEmitter();
 
             instance.encode().then(() => {
-                fs.unlinkSync(OUTPUTFILE);
+                fs.unlinkSync(OUTPUT_FILE);
             });
 
             const actual = instance.getStatus();
@@ -451,24 +449,24 @@ testCase("Lame class", () => {
             assert.deepEqual(actual, expected);
 
             // Ensure next test will executed after finishing encoding
-            return new Promise((resolve, rejetct) => {
+            return new Promise(resolve => {
                 emitter.on("finish", resolve);
             });
         });
 
         /**
-         * @testname Get status object after convertion
+         * @testname Get status object after converting
          * Setup the converter properly, call the encode function and read the status object afterwards.
          */
-        assertions("Get status object after convertion", () => {
+        assertions("Get status object after converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             return instance.encode().then(() => {
                 const actual = instance.getStatus();
@@ -480,24 +478,24 @@ testCase("Lame class", () => {
                     eta: "00:00"
                 };
 
-                fs.unlinkSync(OUTPUTFILE);
+                fs.unlinkSync(OUTPUT_FILE);
                 assert.deepEqual(actual, expected);
             });
         });
 
         /**
-         * @testname Get status eventEmitter successful convertion
+         * @testname Get status eventEmitter successful converting
          * Setup the converter properly, call the encode function and check if progress and finish were emitted.
          */
-        assertions("Get status eventEmitter successful convertion", () => {
+        assertions("Get status eventEmitter successful converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             const emitter = instance.getEmitter();
 
@@ -511,7 +509,7 @@ testCase("Lame class", () => {
             emitter.on("finish", () => {
                 finishTriggered = true;
 
-                fs.unlinkSync(OUTPUTFILE);
+                fs.unlinkSync(OUTPUT_FILE);
             });
 
             emitter.on("error", error => {
@@ -526,14 +524,14 @@ testCase("Lame class", () => {
         });
 
         /**
-         * @testname Get status eventEmitter unsuccessful convertion
+         * @testname Get status eventEmitter unsuccessful converting
          * Setup the converter with invalid source file, call the encode function and check if an error is emitted.
          */
-        assertions("Get status eventEmitter unsuccessful convertion", () => {
+        assertions("Get status eventEmitter unsuccessful converting", () => {
             const targetBitrate = 128;
 
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: targetBitrate
             });
 
@@ -548,11 +546,11 @@ testCase("Lame class", () => {
             });
 
             return instance.encode().catch(() => {
-                return new Promise((resove, reject) => {
+                return new Promise(resolve => {
                     setTimeout(() => {
                         assert.isTrue(errorTriggered);
 
-                        resove();
+                        resolve();
                     }, 500);
                 });
             });
@@ -560,11 +558,11 @@ testCase("Lame class", () => {
 
         /**
          * @testname Options
-         * Specifiy optional Options and check if they are set in the options object.
+         * Specify optional Options and check if they are set in the options object.
          */
         assertions("Options", () => {
             const instance = new Lame({
-                output: OUTPUTFILE,
+                output: OUTPUT_FILE,
                 bitrate: 128,
                 raw: true,
                 "swap-bytes": true,
@@ -630,7 +628,7 @@ testCase("Lame class", () => {
                     "genre-list": "test, genres"
                 }
             });
-            instance.setFile(TESTFILE);
+            instance.setFile(TEST_FILE);
 
             expected = [
                 "-b",

@@ -4,7 +4,6 @@ import {
     existsSync as fsExistsSync,
     readFile as fsReadFile,
     writeFile as fsWriteFile,
-    writeFileSync as fsWriteFileSync,
     unlinkSync as fsUnlinkSync
 } from "fs";
 import { isBuffer as utilIsBuffer } from "util";
@@ -113,7 +112,7 @@ class Lame {
     }
 
     /**
-     * Get status of coverter
+     * Get status of converter
      *
      * @returns {LameStatus}
      */
