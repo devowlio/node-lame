@@ -3,7 +3,7 @@ const pre = require("mocha").before;
 const assertions = require("mocha").it;
 const assert = require("chai").assert;
 const fs = require("fs");
-const fsp = require("fs-promise");
+const fsp = require("fs-extra");
 const util = require("util");
 
 const Lame = require("../index").Lame;
