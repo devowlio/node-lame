@@ -1,7 +1,7 @@
 {
     "name": "node-lame",
     "description": "LAME MP3 encoder for Node.js",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "homepage": "https://github.com/devowlio/node-lame",
     "repository": {
         "type": "git",
