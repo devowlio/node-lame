@@ -51,7 +51,7 @@ class Lame {
      */
     public setFile(path: string): Lame {
         if (!fsExistsSync(path)) {
-            throw new Error("Audio file (path) dose not exist");
+            throw new Error("Audio file (path) does not exist");
         }
 
         this.filePath = path;
