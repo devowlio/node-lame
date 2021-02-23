@@ -12,7 +12,7 @@
     },
     "author": {
         "name": "Jan Karres",
-        "email": "mail@jankarres.com",
+        "email": "jan.karres@devowl.io",
         "url": "https://jankarres.com/"
     },
     "contributors": [
@@ -30,7 +30,7 @@
         "encoder",
         "audio"
     ],
-    "license": "MIT",
+    "license": "ISC",
     "engines": {
         "node": ">=10.13"
     },
