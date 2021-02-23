@@ -31,3 +31,6 @@ Thumbs.db
 # IDE
 .vscode/*
 .idea/*
+
+# Test
+test/encoded.mp3

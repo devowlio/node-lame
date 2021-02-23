@@ -384,7 +384,7 @@ testCase("Lame class", () => {
             } catch (error) {
                 errorCaught = true;
 
-                const expected = "Audio file (path) dose not exist";
+                const expected = "Audio file (path) does not exist";
                 const actual = error.message;
 
                 assert.equal(actual, expected);

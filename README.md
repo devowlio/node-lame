@@ -1,5 +1,7 @@
 # node-lame
 
+<img align="right" src="https://assets.devowl.io/git/node-lame/logo.png" alt="node-lame Logo" height="180" />
+
 LAME is an open-source encoder that encodes and decodes audio to the MP3 file format. For all MP3 needs a Node.js wrapper of the full [LAME](http://lame.sourceforge.net/) command line.
 
 The encoder reads WAV-, MP1-, MP2- and MP3-format and encodes it into an MP3 file. The decoder reads MP3-format and decodes it into WAV.
@@ -8,7 +10,7 @@ The encoder reads WAV-, MP1-, MP2- and MP3-format and encodes it into an MP3 fil
 
 -   Linux or MacOS (This package is NOT tested on Windows)
 -   Lame Installed (View instructions below)
--   Node 10.13.\* or newer
+-   Node 12.20.\* or newer
 
 ## Installation
 
@@ -47,7 +49,7 @@ const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     output: "./audio-files/demo.mp3",
-    bitrate: 192
+    bitrate: 192,
 }).setFile("./audio-files/demo.wav");
 
 encoder
@@ -55,7 +57,7 @@ encoder
     .then(() => {
         // Encoding finished
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 ```
@@ -67,7 +69,7 @@ const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     output: "buffer",
-    bitrate: 192
+    bitrate: 192,
 }).setFile("./audio-files/demo.wav");
 
 encoder
@@ -76,7 +78,7 @@ encoder
         // Encoding finished
         const buffer = encoder.getBuffer();
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 ```
@@ -131,7 +133,7 @@ const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     output: "buffer",
-    bitrate: 192
+    bitrate: 192,
 }).setFile("./audio-files/demo.wav");
 
 encoder
@@ -139,7 +141,7 @@ encoder
     .then(() => {
         // Encoding finished
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 
@@ -153,7 +155,7 @@ const Lame = require("node-lame").Lame;
 
 const encoder = new Lame({
     output: "buffer",
-    bitrate: 192
+    bitrate: 192,
 }).setFile("./audio-files/demo.wav");
 
 const emitter = encoder.getEmitter();
@@ -166,7 +168,7 @@ emitter.on("finish", () => {
     // On finish
 });
 
-emitter.on("error", error => {
+emitter.on("error", (error) => {
     // On error
 });
 
@@ -175,7 +177,7 @@ encoder
     .then(() => {
         // Encoding finished
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 ```
@@ -186,7 +188,7 @@ encoder
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-    output: "./audio-files/demo.wav"
+    output: "./audio-files/demo.wav",
 }).setFile("./audio-files/demo.mp3");
 
 decoder
@@ -194,7 +196,7 @@ decoder
     .then(() => {
         // Decoding finished
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 ```
@@ -205,7 +207,7 @@ decoder
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-    output: "buffer"
+    output: "buffer",
 }).setFile("./audio-files/demo.mp3");
 
 decoder
@@ -214,7 +216,7 @@ decoder
         // Decoding finished
         const buffer = decoder.getBuffer();
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 ```
@@ -266,7 +268,7 @@ decoder.decode()
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-    output: "buffer"
+    output: "buffer",
 }).setFile("./audio-files/demo.mp3");
 
 decoder
@@ -274,7 +276,7 @@ decoder
     .then(() => {
         // Decoding finished
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 
@@ -287,7 +289,7 @@ const status = decoder.getStatus();
 const Lame = require("node-lame").Lame;
 
 const decoder = new Lame({
-    output: "buffer"
+    output: "buffer",
 }).setFile("./audio-files/demo.mp3");
 
 const emitter = decoder.getEmitter();
@@ -300,7 +302,7 @@ emitter.on("finish", () => {
     // On finish
 });
 
-emitter.on("error", error => {
+emitter.on("error", (error) => {
     // On error
 });
 
@@ -309,7 +311,7 @@ decoder
     .then(() => {
         // Decoding finished
     })
-    .catch(error => {
+    .catch((error) => {
         // Something went wrong
     });
 ```

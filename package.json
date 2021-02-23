@@ -32,7 +32,7 @@
     ],
     "license": "ISC",
     "engines": {
-        "node": ">=10.13"
+        "node": ">=12.20"
     },
     "scripts": {
         "build": "tsc",
@@ -47,14 +47,14 @@
     ],
     "dependencies": {},
     "devDependencies": {
-        "@types/chai": "~4.1.7",
-        "@types/fs-extra": "^5.0.4",
-        "@types/mocha": "~5.2.5",
-        "@types/node": "^10.12.5",
-        "chai": "~4.2.0",
-        "fs-extra": "^7.0.1",
-        "mocha": "~5.2.0",
-        "ts-node": "~7.0.1",
-        "typescript": "~3.1.6"
+        "@types/chai": "~4.2.15",
+        "@types/fs-extra": "~9.0.7",
+        "@types/mocha": "~8.2.1",
+        "@types/node": "^12.20.4",
+        "chai": "~4.3.0",
+        "fs-extra": "~9.0.1",
+        "mocha": "~8.3.0",
+        "ts-node": "~9.1.1",
+        "typescript": "~4.1.5"
     }
 }
