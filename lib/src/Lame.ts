@@ -336,6 +336,10 @@ class Lame {
                 this.status.progress = 100;
                 this.status.eta = "00:00";
             }
+
+            if (code === 255) {
+                this.emitter.emit("error", new Error("Unexpected termination of the process, possibly directly after the start. Please check if the input and/or output does not exist."));
+            }
         };
 
         /**

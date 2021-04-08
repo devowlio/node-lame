@@ -109,7 +109,7 @@ testCase("Lame class", () => {
          * @testname Encode buffer to file
          * Read a .wav file into a buffer. Then convert the buffer to a .mp3 file.
          */
-        assertions("Encode buffer to file", () => {
+         assertions("Encode buffer to file", () => {
             const targetBitrate = 128;
 
             return fsp.readFile(TEST_FILE).then(inputBuffer => {
@@ -322,6 +322,29 @@ testCase("Lame class", () => {
     testCase("Other", () => {
         const TEST_FILE = "./test/example.wav";
         const OUTPUT_FILE = "./test/encoded.mp3";
+
+
+        /**
+         * @testname Encode empty buffer to not existing path
+         */
+         assertions("Encode empty buffer to not existing path", () => {
+            let errorCaught = false;
+            const invalidBuffer = Buffer.alloc(100, 0x00);
+
+            const instance = new Lame({
+                raw: true,
+                output: "DOES_NOT_EXIST/output.mp3"
+            });
+
+            instance.setBuffer(invalidBuffer);
+
+            return instance.encode().catch(error => {
+                errorCaught = true;
+            })
+            .finally(() => {
+                assert.isTrue(errorCaught);
+            });
+        });
 
         /**
          * @testname Option output required
