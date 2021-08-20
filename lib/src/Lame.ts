@@ -432,11 +432,11 @@ class Lame {
      * Remove temp files, if error occurred
      */
     private removeTempFilesOnError() {
-        if (this.fileBufferTempFilePath != undefined) {
+        if (this.fileBufferTempFilePath != undefined && fsExistsSync(this.fileBufferTempFilePath)) {
             fsUnlinkSync(this.fileBufferTempFilePath);
         }
 
-        if (this.progressedBufferTempFilePath != undefined) {
+        if (this.progressedBufferTempFilePath != undefined && fsExistsSync(this.progressedBufferTempFilePath)) {
             fsUnlinkSync(this.progressedBufferTempFilePath);
         }
     }
