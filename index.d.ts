@@ -38,6 +38,7 @@ declare namespace Options {
         comment?: string;
         track?: string;
         genre?: string;
+        artwork?: string;
 
         "add-id3v2"?: boolean;
         "id3v1-only"?: boolean;
