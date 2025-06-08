@@ -10,7 +10,7 @@ The encoder reads WAV-, MP1-, MP2- and MP3-format and encodes it into an MP3 fil
 
 -   Linux or MacOS (This package is NOT tested on Windows)
 -   Lame Installed (View instructions below)
--   Node 12.20.\* or newer
+-   Node 18.20.\* or newer
 
 ## Installation
 
