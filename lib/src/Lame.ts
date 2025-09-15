@@ -34,6 +34,9 @@ class Lame {
     private progressedBuffer: Buffer;
     private progressedBufferTempFilePath: string;
 
+    private lamePath: string = "lame";
+    private tempPath: string = "./temp";
+
     /**
      * Creates an instance of Lame and set all options
      * @param {Options} options
@@ -71,6 +74,36 @@ class Lame {
 
         this.fileBuffer = file;
         this.filePath = undefined;
+
+        return this;
+    }
+
+    /**
+     * Set custom path to lame executable
+     *
+     * @param {string} path Path to lame executable
+     */
+    public setLamePath(path: string): Lame {
+        if (typeof path !== "string" || path.trim() === "") {
+            throw new Error("Lame path must be a non-empty string");
+        }
+
+        this.lamePath = path;
+
+        return this;
+    }
+
+    /**
+     * Set custom temp directory path
+     *
+     * @param {string} path Path to temp directory
+     */
+    public setTempPath(path: string): Lame {
+        if (typeof path !== "string" || path.trim() === "") {
+            throw new Error("Temp path must be a non-empty string");
+        }
+
+        this.tempPath = path;
 
         return this;
     }
@@ -350,7 +383,7 @@ class Lame {
             this.emitter.emit("error", error);
         };
 
-        const instance = spawn("lame", args);
+        const instance = spawn(this.lamePath, args);
         instance.stdout.on("data", progressStdout);
         instance.stderr.on("data", progressStdout); // Most output, even non-errors, are on stderr
         instance.on("close", progressOnClose);
@@ -405,8 +438,7 @@ class Lame {
         type: "raw" | "encoded",
         progressType: "encode" | "decode"
     ): string {
-        const prefix = `${__dirname}/../.`;
-        let path = `${prefix}./temp/${type}/`;
+        let path = `${this.tempPath}/${type}/`;
         let possible =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -420,7 +452,7 @@ class Lame {
             path += `.mp3`;
         }
 
-        if (!fsExistsSync(`${prefix}./temp/${path}`)) {
+        if (!fsExistsSync(path)) {
             return path;
         } else {
             return this.tempFilePathGenerator(type, progressType);
