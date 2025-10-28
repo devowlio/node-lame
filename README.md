@@ -8,150 +8,129 @@ The encoder reads WAV-, MP1-, MP2- and MP3-format and encodes it into an MP3 fil
 
 ## Requirements
 
--   Linux or MacOS (This package is NOT tested on Windows)
--   Lame Installed (View instructions below)
--   Node 18.20.\* or newer
+- Recent Linux, macOS, or Windows (x64/ARM64) environment
+- Node 20.\* or newer
 
 ## Installation
 
-You can install it with `npm`:
+Install the package with your preferred Node.js package manager; the postinstall script will take care of fetching a suitable LAME binary for your platform.
 
 ```bash
-$ npm install node-lame
+pnpm add node-lame
+# or
+npm install node-lame
 ```
 
-If you have not installed [LAME](http://lame.sourceforge.net/) yet, please use the following instruction.
+Set environment variables to adjust the download behaviour:
 
-### Install on Debian
+- `LAME_BINARY=/absolute/path/to/lame` – specify a preinstalled executable; set it before running your application so the wrapper uses that path.
+- `LAME_FORCE_DOWNLOAD=1` – redownload the packaged binary even when a cached copy exists (set when you install the package).
+- `LAME_SKIP_DOWNLOAD=1` – skip the download entirely (set when you install the package and ensure your app has access to a `lame` binary).
+- `LAME_VERSION=3.100` – override the default LAME release fetched by the installer (set when you install if you need a different version).
 
-```bash
-$ sudo apt-get install lame
-```
-
-### Install on MacOS with brew
-
-```bash
-$ brew install lame
-```
-
-### Install on Windows
-
-1. Go to the the [Lame Download Page](https://lame.buanzo.org/#lamewindl) and download the EXE or ZIP file.
-2. Navigate to the directory Lame was installed in (most commonly `C:\Program Files (x86)\Lame For Audacity`).
-3. Add the directory to your [Environment Variables](https://www.java.com/en/download/help/path.xml).
+When skipping the download, make sure `LAME_BINARY` or an equivalent mechanism is in place before your application starts, otherwise the wrapper will fall back to the system `lame` and fail if none is available.
 
 ## Examples
 
+The following recipes demonstrate the encoder with async/await. Both module systems are supported; choose the import style that matches your project:
+
+- **ES Modules**: `import { Lame } from "node-lame";`
+- **CommonJS**: `const { Lame } = require("node-lame");`
+
+The detailed examples below use the ES Modules syntax for brevity, but the logic is identical when using `require` instead of `import`.
+
 ### Encode from file to file
 
-```node
-const Lame = require("node-lame").Lame;
+Converting a WAV file into an MP3 only requires creating the encoder, supplying a source file, and awaiting `encode()`.
+
+```js
+import { Lame } from "node-lame";
 
 const encoder = new Lame({
     output: "./audio-files/demo.mp3",
     bitrate: 192,
-}).setFile("./audio-files/demo.wav");
+});
 
-encoder
-    .encode()
-    .then(() => {
-        // Encoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+encoder.setFile("./audio-files/demo.wav");
+await encoder.encode();
 ```
 
 ### Encode from file to buffer
 
-```node
-const Lame = require("node-lame").Lame;
+When output is set to `"buffer"`, the encoded audio is returned as a Node.js `Buffer` that you can further process.
+
+```js
+import { Lame } from "node-lame";
 
 const encoder = new Lame({
     output: "buffer",
     bitrate: 192,
-}).setFile("./audio-files/demo.wav");
+});
 
-encoder
-    .encode()
-    .then(() => {
-        // Encoding finished
-        const buffer = encoder.getBuffer();
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+encoder.setFile("./audio-files/demo.wav");
+await encoder.encode();
+
+const buffer = encoder.getBuffer();
 ```
 
 ### Encode from buffer to file
 
-```node
-[...]
+If you already have PCM data loaded into memory, feed it directly into the encoder and write the result to disk.
 
-const Lame = require("node-lame").Lame;
+```js
+import { readFile } from "node:fs/promises";
+import { Lame } from "node-lame";
+
+const audioFileBuffer = await readFile("./audio-files/demo.wav");
 
 const encoder = new Lame({
-    "output": "./audio-files/demo.mp3",
-    "bitrate": 192
-}).setBuffer(audioFileBuffer);
+    output: "./audio-files/demo.mp3",
+    bitrate: 192,
+});
 
-encoder.encode()
-    .then(() => {
-        // Encoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+encoder.setBuffer(audioFileBuffer);
+await encoder.encode();
 ```
 
 ### Encode from buffer to buffer
 
-```node
-[...]
+Buffer-to-buffer encoding is useful when you want to keep the converted audio in memory rather than touching the filesystem.
 
-const Lame = require("node-lame").Lame;
+```js
+import { readFile } from "node:fs/promises";
+import { Lame } from "node-lame";
+
+const audioFileBuffer = await readFile("./audio-files/demo.wav");
 
 const encoder = new Lame({
-    "output": "buffer",
-    "bitrate": 192
-}).setBuffer(audioFileBuffer);
+    output: "buffer",
+    bitrate: 192,
+});
 
-encoder.encode()
-    .then(() => {
-        // Encoding finished
-        const buffer = encoder.getBuffer();
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+encoder.setBuffer(audioFileBuffer);
+await encoder.encode();
+
+const buffer = encoder.getBuffer();
 ```
 
 ### Get status of encoder as object
 
-```node
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const encoder = new Lame({
     output: "buffer",
     bitrate: 192,
 }).setFile("./audio-files/demo.wav");
 
-encoder
-    .encode()
-    .then(() => {
-        // Encoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
-
+await encoder.encode();
 const status = encoder.getStatus();
 ```
 
 ### Get status of encoder as EventEmitter
 
-```node
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const encoder = new Lame({
     output: "buffer",
@@ -172,121 +151,76 @@ emitter.on("error", (error) => {
     // On error
 });
 
-encoder
-    .encode()
-    .then(() => {
-        // Encoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+await encoder.encode();
 ```
 
 ### Decode from file to file
 
-```node
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const decoder = new Lame({
     output: "./audio-files/demo.wav",
 }).setFile("./audio-files/demo.mp3");
 
-decoder
-    .decode()
-    .then(() => {
-        // Decoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+await decoder.decode();
 ```
 
 ### Decode from file to buffer
 
-```node
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const decoder = new Lame({
     output: "buffer",
 }).setFile("./audio-files/demo.mp3");
 
-decoder
-    .decode()
-    .then(() => {
-        // Decoding finished
-        const buffer = decoder.getBuffer();
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+await decoder.decode();
+const buffer = decoder.getBuffer();
 ```
 
 ### Decode from buffer to file
 
-```node
-[...]
-
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const decoder = new Lame({
-    "output": "./audio-files/demo.wav"
+    output: "./audio-files/demo.wav",
 }).setBuffer(mp3InputBuffer);
 
-decoder.decode()
-    .then(() => {
-        // Decoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+await decoder.decode();
 ```
 
 ### Decode from buffer to buffer
 
-```node
-[...]
-
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const decoder = new Lame({
-    "output": "buffer"
+    output: "buffer",
 }).setBuffer(mp3InputBuffer);
 
-decoder.decode()
-    .then(() => {
-        // Decoding finished
-        const buffer = decoder.getBuffer();
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+await decoder.decode();
+const buffer = decoder.getBuffer();
 ```
 
 ### Get status of decoder as object
 
-```node
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const decoder = new Lame({
     output: "buffer",
 }).setFile("./audio-files/demo.mp3");
 
-decoder
-    .encode()
-    .then(() => {
-        // Decoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
-
+await decoder.decode();
 const status = decoder.getStatus();
 ```
 
 ### Get status of decoder as EventEmitter
 
-```node
-const Lame = require("node-lame").Lame;
+```js
+import { Lame } from "node-lame";
 
 const decoder = new Lame({
     output: "buffer",
@@ -306,14 +240,7 @@ emitter.on("error", (error) => {
     // On error
 });
 
-decoder
-    .decode()
-    .then(() => {
-        // Decoding finished
-    })
-    .catch((error) => {
-        // Something went wrong
-    });
+await decoder.decode();
 ```
 
 ## All options
