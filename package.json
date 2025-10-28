@@ -1,7 +1,7 @@
 {
     "name": "node-lame",
-    "description": "LAME MP3 encoder for Node.js",
     "version": "1.5.1",
+    "description": "LAME MP3 encoder for Node.js",
     "homepage": "https://github.com/devowlio/node-lame",
     "repository": {
         "type": "git",
@@ -15,12 +15,41 @@
         "email": "jan.karres@devowl.io",
         "url": "https://jankarres.com/"
     },
-    "contributors": [
-        {
-            "name": "devowl.io GmbH",
-            "email": "mail@devowl.io"
+    "license": "ISC",
+    "type": "module",
+    "packageManager": "pnpm@10.19.0",
+    "engines": {
+        "node": ">=20"
+    },
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.cjs",
+            "default": "./dist/index.mjs"
         }
+    },
+    "files": [
+        "dist/",
+        "README.md",
+        "LICENSE"
     ],
+    "scripts": {
+        "build": "tsup",
+        "clean": "rm -rf dist",
+        "lint": "eslint . --ext .ts,.mjs",
+        "format": "prettier --check .",
+        "typecheck": "tsup --dts-only --silent",
+        "test": "pnpm run test:unit && pnpm run test:integration",
+        "test:unit": "vitest run tests/unit --coverage",
+        "test:integration": "vitest run tests/integration",
+        "fix": "pnpm exec eslint . --ext .ts,.mjs --fix && pnpm exec prettier --write .",
+        "postinstall": "node ./scripts/install-lame.mjs",
+        "prepublishOnly": "pnpm run build"
+    },
     "keywords": [
         "mp3",
         "wav",
@@ -30,31 +59,22 @@
         "encoder",
         "audio"
     ],
-    "license": "ISC",
-    "engines": {
-        "node": ">=18.20"
+    "dependencies": {
+        "extract-zip": "~2.0.1",
+        "tar": "~7.5.1"
     },
-    "scripts": {
-        "build": "tsc",
-        "test": "./node_modules/.bin/mocha"
-    },
-    "files": [
-        "lib/build/",
-        "temp/",
-        "index.js",
-        "index.d.ts",
-        "README.md"
-    ],
-    "dependencies": {},
     "devDependencies": {
-        "@types/chai": "~5.2.2",
-        "@types/fs-extra": "~11.0.4",
-        "@types/mocha": "~10.0.10",
-        "@types/node": "^18.11.9",
-        "chai": "~4.5.0",
-        "fs-extra": "~11.3.0",
-        "mocha": "~11.5.0",
-        "ts-node": "~10.9.2",
-        "typescript": "~5.8.3"
+        "@eslint/js": "~9.38.0",
+        "@types/node": "~20.14.8",
+        "@typescript-eslint/eslint-plugin": "~8.46.2",
+        "@typescript-eslint/parser": "~8.46.2",
+        "@vitest/coverage-istanbul": "~4.0.4",
+        "eslint": "~9.38.0",
+        "eslint-config-prettier": "~10.1.8",
+        "globals": "~16.4.0",
+        "prettier": "~3.6.2",
+        "tsup": "~8.5.0",
+        "typescript": "~5.9.3",
+        "vitest": "~4.0.4"
     }
 }
