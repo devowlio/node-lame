@@ -8,6 +8,7 @@ import {
 } from "fs";
 import { spawn } from "child_process";
 import { EventEmitter } from "events";
+import { resolve as pathResolve } from "path";
 
 /**
  * Wrapper for Lame for Node
@@ -35,7 +36,7 @@ class Lame {
     private progressedBufferTempFilePath: string;
 
     private lamePath: string = "lame";
-    private tempPath: string = "./temp";
+    private tempPath: string = pathResolve(__dirname, "../../temp");
 
     /**
      * Creates an instance of Lame and set all options
