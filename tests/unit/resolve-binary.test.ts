@@ -1,6 +1,5 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve as resolvePath } from "node:path";
-import type { Platform } from "node:process";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -84,7 +83,7 @@ describe("resolve-binary", () => {
         const fallback = deriveModuleUrl(undefined, "/tmp/example.js");
         expect(fallback).toBe(pathToFileURL("/tmp/example.js").href);
         expect(getPlatformExecutableSuffix("win32")).toBe(".exe");
-        expect(getPlatformExecutableSuffix("linux" as Platform)).toBe("");
+        expect(getPlatformExecutableSuffix("linux" as typeof process.platform)).toBe("");
         expect(deriveModuleUrl(undefined, undefined)).toBeUndefined();
         expect(deriveModuleUrl({ url: 123 } as unknown as { url?: string }, "/tmp/fallback.js")).toBe(
             pathToFileURL("/tmp/fallback.js").href,
