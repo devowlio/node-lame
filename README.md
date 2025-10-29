@@ -113,6 +113,28 @@ await encoder.encode();
 const buffer = encoder.getBuffer();
 ```
 
+### Encode from Float32Array PCM input
+
+Raw PCM floats from web audio streams can be consumed directly without first converting them to integers.
+
+```js
+import { Lame } from "node-lame";
+
+const samples = new Float32Array([-1, -0.5, 0, 0.5, 1]);
+
+const encoder = new Lame({
+    output: "buffer",
+    raw: true,
+});
+
+encoder.setBuffer(samples);
+await encoder.encode();
+
+const buffer = encoder.getBuffer();
+```
+
+`setBuffer` also accepts `Float64Array`, `Int16Array`, `Int32Array`, and other `ArrayBufferView` inputs by converting them to the expected PCM encoding under the hood.
+
 ### Get status of encoder as object
 
 ```js

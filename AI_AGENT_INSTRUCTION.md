@@ -122,3 +122,5 @@ You operate as a senior Node.js and TypeScript backend engineer focused on maint
 - When modifying CLI behaviour, test on at least one supported platform or enhance integration tests with synthetic binaries.
 - Prefer extending existing classes and helpers over introducing new modules; if a new module is required, place it under `src/core` (runtime logic) or `src/internal` (supporting utilities).
 - Document behavioural changes in commit messages following Conventional Commit rules; the release tooling will derive `CHANGELOG.md` automatically.
+- Never edit `CHANGELOG.md` by hand; rely on the release workflow or explicit project tooling to populate it.
+- After finishing any feature implementation, include in your final response a Conventional Commit-style message suggestion that downstream tooling can use.
