@@ -1,6 +1,8 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve as resolvePath } from "node:path";
+import type { Platform } from "node:process";
 import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sharedTempDir = join(tmpdir(), "node-lame-test-resolver");
@@ -67,5 +69,41 @@ describe("resolve-binary", () => {
 
         expect(resolveBundledLameBinary()).toBeNull();
         expect(resolveLameBinary()).toBe("lame");
+    });
+
+    it("derives module URLs from meta information when present", async () => {
+        const {
+            deriveModuleUrl,
+            resolvePackageRoot,
+            getPlatformExecutableSuffix,
+        } = await importResolver();
+
+        expect(deriveModuleUrl({ url: "file:///tmp/module.js" }, undefined)).toBe(
+            "file:///tmp/module.js",
+        );
+        const fallback = deriveModuleUrl(undefined, "/tmp/example.js");
+        expect(fallback).toBe(pathToFileURL("/tmp/example.js").href);
+        expect(getPlatformExecutableSuffix("win32")).toBe(".exe");
+        expect(getPlatformExecutableSuffix("linux" as Platform)).toBe("");
+        expect(deriveModuleUrl(undefined, undefined)).toBeUndefined();
+        expect(deriveModuleUrl({ url: 123 } as unknown as { url?: string }, "/tmp/fallback.js")).toBe(
+            pathToFileURL("/tmp/fallback.js").href,
+        );
+
+        const dirPath = join("/tmp", "pkg", "dist", "internal", "binary");
+        const derivedFromDir = resolvePackageRoot(undefined, dirPath);
+        expect(derivedFromDir).toBe(join("/tmp", "pkg"));
+        const derivedFromUrl = resolvePackageRoot(
+            pathToFileURL(join("/tmp", "pkg", "dist", "internal", "binary", "module.js")).href,
+            undefined,
+        );
+        expect(resolvePath(derivedFromUrl)).toBe(resolvePath(join("/tmp", "pkg")));
+        const preferDirOverUrl = resolvePackageRoot(
+            pathToFileURL(join("/tmp", "pkg", "lib", "module.js")).href,
+            dirPath,
+        );
+        expect(preferDirOverUrl).toBe(join("/tmp", "pkg"));
+        const derivedFromCwd = resolvePackageRoot(undefined, undefined);
+        expect(derivedFromCwd).toBe(process.cwd());
     });
 });

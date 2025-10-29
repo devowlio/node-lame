@@ -17,18 +17,21 @@ interface LameOptionsBag {
     output: string | "buffer";
     raw?: boolean;
     "swap-bytes"?: boolean;
+    "swap-channel"?: boolean;
+    gain?: number;
     sfreq?: SampleFrequency;
     bitwidth?: BitWidth;
     signed?: boolean;
     unsigned?: boolean;
     "little-endian"?: boolean;
     "big-endian"?: boolean;
+    mp1Input?: boolean;
     mp2Input?: boolean;
     mp3Input?: boolean;
     mode?: ChannelMode;
     "to-mono"?: boolean;
     "channel-different-block-sizes"?: boolean;
-    freeformat?: FreeFormat;
+    freeformat?: boolean;
     "disable-info-tag"?: boolean;
     comp?: number;
     scale?: number;
@@ -41,12 +44,17 @@ interface LameOptionsBag {
     preset?: PresetProfile;
     noasm?: NoAsm;
     quality?: QualityLevel;
+    "quality-high"?: boolean;
+    "fast-encoding"?: boolean;
     bitrate?: BitRate;
+    "max-bitrate"?: BitRate;
     "force-bitrate"?: boolean;
     cbr?: boolean;
     abr?: number;
     vbr?: boolean;
     "vbr-quality"?: number;
+    "vbr-old"?: boolean;
+    "vbr-new"?: boolean;
     "ignore-noise-in-sfb21"?: boolean;
     emp?: Emphasis;
     "mark-as-copyrighted"?: boolean;
@@ -59,6 +67,22 @@ interface LameOptionsBag {
     highpass?: number;
     "highpass-width"?: number;
     resample?: SampleFrequency;
+    "decode-mp3delay"?: number;
+    "nogap"?: string[];
+    "nogapout"?: string;
+    "nogaptags"?: boolean;
+    "out-dir"?: string;
+    priority?: PriorityLevel;
+    disptime?: number | false;
+    silent?: boolean;
+    quiet?: boolean;
+    verbose?: boolean;
+    help?: boolean | HelpTopic;
+    usage?: boolean | HelpTopic;
+    longhelp?: boolean;
+    version?: boolean;
+    license?: boolean;
+    "no-histogram"?: boolean;
     meta?: MetaOptions;
 }
 
@@ -66,11 +90,13 @@ type SampleFrequency = 8 | 11.025 | 12 | 16 | 22.05 | 24 | 32 | 44.1 | 48;
 
 type BitWidth = 8 | 16 | 24 | 32;
 
-type ChannelMode = "s" | "j" | "f" | "d" | "m" | "l" | "r";
+type ChannelMode = "s" | "j" | "f" | "d" | "m" | "l" | "r" | "a";
 
-type FreeFormat = "FreeAmp" | "in_mpg123" | "l3dec" | "LAME" | "MAD";
+type PriorityLevel = 0 | 1 | 2 | 3 | 4;
 
-type PresetProfile = "medium" | "standard" | "extreme" | "insane";
+type HelpTopic = "id3" | "dev";
+
+type PresetProfile = string | number;
 
 type NoAsm = "mmx" | "3dnow" | "sse";
 
@@ -98,6 +124,14 @@ type BitRate =
 
 type Emphasis = "n" | 5 | "c";
 
+type CustomFrameRecord =
+    | Record<string, string | number | boolean>
+    | Array<
+          | string
+          | [string, string | number | boolean]
+          | { id: string; value: string | number | boolean }
+      >;
+
 interface MetaOptions {
     title?: string;
     artist?: string;
@@ -115,6 +149,7 @@ interface MetaOptions {
     "pad-id3v2-size"?: number;
     "genre-list"?: string;
     "ignore-tag-errors"?: boolean;
+    custom?: CustomFrameRecord;
 }
 
 interface LameProgressEmitter extends EventEmitter {
@@ -134,13 +169,15 @@ export type {
     BitWidth,
     ChannelMode,
     Emphasis,
-    FreeFormat,
     LameOptionsBag,
     LameProgressEmitter,
     LameStatus,
     MetaOptions,
     NoAsm,
     PresetProfile,
+    PriorityLevel,
     QualityLevel,
     SampleFrequency,
+    HelpTopic,
+    CustomFrameRecord,
 };

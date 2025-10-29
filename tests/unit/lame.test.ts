@@ -20,7 +20,12 @@ vi.mock("node:child_process", () => ({
     spawn: (...args: SpawnArgs) => spawnMock(...args),
 }));
 
-const { Lame } = await import("../../src/core/lame");
+const {
+    Lame,
+    parseDecodeProgressLine,
+    parseEncodeProgressLine,
+    normalizeCliMessage,
+} = await import("../../src/core/lame");
 
 describe("Lame", () => {
     const tempDirs: string[] = [];
@@ -98,6 +103,35 @@ describe("Lame", () => {
         expect(encoder.getStatus().finished).toBe(true);
     });
 
+    it("honours custom disptime option", async () => {
+        const encoder = new Lame({
+            output: "buffer",
+            bitrate: 128,
+            disptime: 5,
+        });
+        encoder.setBuffer(Buffer.from("input"));
+
+        await encoder.encode();
+
+        const [, args] = spawnMock.mock.calls[0] as SpawnArgs;
+        expect(args).toContain("--disptime");
+        expect(args).toContain("5");
+    });
+
+    it("omits default disptime when disabled", async () => {
+        const encoder = new Lame({
+            output: "buffer",
+            bitrate: 128,
+            disptime: false,
+        });
+        encoder.setBuffer(Buffer.from("input"));
+
+        await encoder.encode();
+
+        const [, args] = spawnMock.mock.calls[0] as SpawnArgs;
+        expect(args).not.toContain("--disptime");
+    });
+
     it("emits finish when the CLI reports completion", async () => {
         const encoder = new Lame({ output: "buffer", bitrate: 128 });
         encoder.setBuffer(Buffer.from("input"));
@@ -152,6 +186,7 @@ describe("Lame", () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         expect(progress).not.toHaveLength(0);
+        expect(progress[0]).toBeGreaterThan(0);
         expect(encoder.getBuffer()).toBeInstanceOf(Buffer);
         expect(encoder.getStatus().finished).toBe(true);
     });
@@ -189,6 +224,46 @@ describe("Lame", () => {
             true,
         );
         expect(encoder.getStatus().eta).toBe("00:00");
+    });
+
+    it("does not decrease encode progress when percentage regresses", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        encoder.setBuffer(Buffer.from("input"));
+
+        const progressValues: number[] = [];
+        encoder.getEmitter().on("progress", ([progress]) => {
+            progressValues.push(progress);
+        });
+
+        spawnBehavior = (process, args) => {
+            setTimeout(async () => {
+                const outputPath = args[1];
+                await fsPromises.writeFile(
+                    outputPath,
+                    Uint8Array.from(Buffer.from("encoded")),
+                );
+                process.stderr.emit(
+                    "data",
+                    Buffer.from("Frame (60%)| 00:20 "),
+                );
+                process.stderr.emit(
+                    "data",
+                    Buffer.from("Frame (40%)| 00:18 "),
+                );
+                process.stdout.emit(
+                    "data",
+                    Buffer.from("Writing LAME Tag...done"),
+                );
+                process.emit("close", 0);
+            }, 5);
+        };
+
+        await encoder.encode();
+        expect(progressValues).toContain(60);
+        expect(progressValues[0]).toBe(60);
+        expect(progressValues.some((value) => value < 60)).toBe(false);
+        expect(progressValues.filter((value) => value === 60).length).toBeGreaterThanOrEqual(2);
+        expect(encoder.getStatus().progress).toBe(100);
     });
 
     it("throws when no input is set", async () => {
@@ -429,5 +504,249 @@ describe("Lame", () => {
 
         await encoder.decode();
         expect(observed.at(-1)?.[0]).toBe(100);
+    });
+
+    it("parses encode progress emitted on stdout", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        encoder.setBuffer(Buffer.from("input"));
+
+        let stdoutListener: ((chunk: Buffer) => void) | undefined;
+        const progressValues: number[] = [];
+        encoder.getEmitter().on("progress", ([value]) => {
+            progressValues.push(value);
+        });
+
+        spawnMock.mockImplementation((_, args) => {
+            const process = new EventEmitter() as MockChildProcess;
+            process.stdout = new EventEmitter();
+            process.stderr = new EventEmitter();
+            process.kill = vi.fn();
+
+            process.stdout.on = vi.fn((event: string, listener: (...args: unknown[]) => void) => {
+                process.stdout.addListener(event, listener);
+                if (event === "data") {
+                    stdoutListener = listener as (chunk: Buffer) => void;
+                }
+                return process.stdout;
+            });
+
+            process.stderr.on = vi.fn((event: string, listener: (...args: unknown[]) => void) => {
+                process.stderr.addListener(event, listener);
+                return process.stderr;
+            });
+
+            setTimeout(async () => {
+                const outputPath = args[1];
+                await fsPromises.writeFile(
+                    outputPath,
+                    Uint8Array.from(Buffer.from("encoded")),
+                );
+                stdoutListener?.(Buffer.from("Frame (42%)| 01:23 "));
+                stdoutListener?.(Buffer.from("Writing LAME Tag...done"));
+                process.emit("close", 0);
+            }, 5);
+
+            return process;
+        });
+
+        await encoder.encode();
+        expect(progressValues[0]).toBe(42);
+        expect(encoder.getStatus().progress).toBe(100);
+        expect(encoder.getStatus().eta).toBe("00:00");
+    });
+
+    it("parses decode progress emitted on stderr", async () => {
+        const inputPath = await createTempFile(Buffer.from("input"));
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        encoder.setFile(inputPath);
+
+        let stderrListener: ((chunk: Buffer) => void) | undefined;
+        const progressValues: number[] = [];
+        encoder.getEmitter().on("progress", ([value]) => {
+            progressValues.push(value);
+        });
+
+        spawnMock.mockImplementation((_, args) => {
+            const process = new EventEmitter() as MockChildProcess;
+            process.stdout = new EventEmitter();
+            process.stderr = new EventEmitter();
+            process.kill = vi.fn();
+
+            process.stdout.on = vi.fn((event: string, listener: (...args: unknown[]) => void) => {
+                process.stdout.addListener(event, listener);
+                return process.stdout;
+            });
+
+            process.stderr.on = vi.fn((event: string, listener: (...args: unknown[]) => void) => {
+                process.stderr.addListener(event, listener);
+                if (event === "data") {
+                    stderrListener = listener as (chunk: Buffer) => void;
+                }
+                return process.stderr;
+            });
+
+            setTimeout(async () => {
+                const outputPath = args[1];
+                await fsPromises.writeFile(
+                    outputPath,
+                    Uint8Array.from(Buffer.from("decoded")),
+                );
+                stderrListener?.(Buffer.from("Frame 3/5"));
+                process.emit("close", 0);
+            }, 5);
+
+            return process;
+        });
+
+        await encoder.decode();
+        expect(progressValues[0]).toBe(60);
+        expect(encoder.getStatus().progress).toBeGreaterThan(50);
+    });
+
+    it("ignores decode progress lines that do not match expected format", async () => {
+        const inputPath = await createTempFile(Buffer.from("input"));
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        encoder.setFile(inputPath);
+
+        spawnBehavior = (process, args) => {
+            setTimeout(async () => {
+                const outputPath = args[1];
+                await fsPromises.writeFile(
+                    outputPath,
+                    Uint8Array.from(Buffer.from("decoded")),
+                );
+                process.stderr.emit("data", Buffer.from("Some random text"));
+                process.emit("close", 0);
+            }, 5);
+        };
+
+        await encoder.decode();
+        expect(encoder.getStatus().finished).toBe(true);
+    });
+
+    it("prefixes warning and error outputs with lame label", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        encoder.setBuffer(Buffer.from("input"));
+
+        const errors: string[] = [];
+        encoder.getEmitter().on("error", (error) => errors.push(error.message));
+
+        spawnBehavior = (process, args) => {
+            setTimeout(async () => {
+                const outputPath = args[1];
+                await fsPromises.writeFile(
+                    outputPath,
+                    Uint8Array.from(Buffer.from("encoded")),
+                );
+                process.stderr.emit("data", Buffer.from("Warning: clipped"));
+                process.stderr.emit("data", Buffer.from("Error loading table"));
+                process.stderr.emit("data", Buffer.from("lame: fatal"));
+                process.stdout.emit(
+                    "data",
+                    Buffer.from("Writing LAME Tag...done"),
+                );
+                process.emit("close", 0);
+            }, 5);
+        };
+
+        await encoder.encode().catch(() => {});
+
+        expect(errors).toContain("lame: Warning: clipped");
+        expect(errors).toContain("lame: Error loading table");
+        expect(errors).toContain("lame: fatal");
+    });
+
+    it("emits dedicated error for exit code 255", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        encoder.setBuffer(Buffer.from("input"));
+
+        const errors: string[] = [];
+        encoder.getEmitter().on("error", (error) => errors.push(error.message));
+
+        spawnBehavior = (process) => {
+            setTimeout(() => {
+                process.emit("close", 255);
+            }, 5);
+        };
+
+        await expect(encoder.encode()).rejects.toThrow(
+            "Unexpected termination of the process, possibly directly after the start. Please check if the input and/or output does not exist.",
+        );
+        expect(errors).toHaveLength(1);
+    });
+
+    it("ensures output directories exist for nested file targets", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        const baseDir = await createTempDir();
+        const nestedFile = join(baseDir, "nested", "out.mp3");
+
+        // @ts-expect-error accessing private method for coverage
+        await encoder.ensureOutputDirectoryExists(nestedFile);
+
+        const stats = await fsPromises.stat(join(baseDir, "nested"));
+        expect(stats.isDirectory()).toBe(true);
+
+        // @ts-expect-error accessing private method for coverage
+        await expect(encoder.ensureOutputDirectoryExists("relative.mp3")).resolves.toBeUndefined();
+    });
+
+    it("generates raw decode temp files with mp3 extension", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        const customTemp = await createTempDir();
+        encoder.setTempPath(customTemp);
+
+        // @ts-expect-error accessing private method for coverage
+        const path = await encoder.generateTempFilePath("raw", "decode");
+        expect(path.endsWith(".mp3")).toBe(true);
+    });
+
+    it("removes temporary artifacts when requested", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        const temp = await createTempDir();
+        const fileTemp = join(temp, "buffer.raw");
+        const encodedTemp = join(temp, "encoded.mp3");
+        await fsPromises.writeFile(fileTemp, Buffer.from("rawdata"));
+        await fsPromises.writeFile(encodedTemp, Buffer.from("encoded"));
+
+        Object.assign(encoder as unknown as Record<string, unknown>, {
+            fileBufferTempFilePath: fileTemp,
+            progressedBufferTempFilePath: encodedTemp,
+        });
+
+        // @ts-expect-error accessing private method for coverage
+        await encoder.removeTempArtifacts();
+
+        await expect(fsPromises.stat(fileTemp)).rejects.toThrow();
+        await expect(fsPromises.stat(encodedTemp)).rejects.toThrow();
+    });
+
+    it("skips removing temporary artifacts when none exist", async () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+
+        // @ts-expect-error accessing private method for coverage
+        await expect(encoder.removeTempArtifacts()).resolves.toBeUndefined();
+    });
+
+    describe("progress parsing helpers", () => {
+        it("parses encode progress and eta", () => {
+            const parsed = parseEncodeProgressLine("Frame (42%)| 01:23 ");
+            expect(parsed).toEqual({ progress: 42, eta: "01:23" });
+            expect(parseEncodeProgressLine("no progress")).toBeNull();
+        });
+
+        it("parses decode progress values", () => {
+            expect(parseDecodeProgressLine("Frame 3/5")).toBe(60);
+            expect(parseDecodeProgressLine("Frame 0/0")).toBeNaN();
+            expect(parseDecodeProgressLine("irrelevant")).toBeNull();
+            expect(parseDecodeProgressLine("3/" as unknown as string)).toBeNull();
+        });
+
+        it("normalizes CLI messages", () => {
+            expect(normalizeCliMessage("Warning: clipped")).toBe(
+                "lame: Warning: clipped",
+            );
+            expect(normalizeCliMessage("lame: fatal")).toBe("lame: fatal");
+            expect(normalizeCliMessage("other message")).toBeNull();
+        });
     });
 });

@@ -12,6 +12,50 @@ import { LameOptions } from "./lame-options";
 
 type ProgressKind = "encode" | "decode";
 
+function parseEncodeProgressLine(content: string): {
+    progress?: number;
+    eta?: string;
+} | null {
+    const progressMatch = content.match(/\((( [0-9])|([0-9]{2})|(100))%\)\|/);
+    if (!progressMatch) {
+        return null;
+    }
+
+    const etaMatch = content.match(/[0-9]{1,2}:[0-9][0-9] /);
+
+    /* c8 ignore next */
+    const progress = Number(progressMatch[1]);
+    const eta = etaMatch ? etaMatch[0].trim() : undefined;
+
+    return { progress, eta };
+}
+
+function parseDecodeProgressLine(content: string): number | null {
+    const progressMatch = content.match(/[0-9]{1,10}\/[0-9]{1,10}/);
+    if (!progressMatch) {
+        return null;
+    }
+
+    const [current, total] = progressMatch[0].split("/").map(Number);
+    if (!Number.isFinite(current) || !Number.isFinite(total) || total === 0) {
+        return NaN;
+    }
+
+    return Math.floor((current / total) * 100);
+}
+
+function normalizeCliMessage(content: string): string | null {
+    if (
+        content.startsWith("lame: ") ||
+        content.startsWith("Warning: ") ||
+        content.includes("Error ")
+    ) {
+        return content.startsWith("lame: ") ? content : `lame: ${content}`;
+    }
+
+    return null;
+}
+
 /**
  * Thin wrapper around the LAME CLI that manages temp files, progress events,
  * and output handling while delegating the heavy lifting to the binary.
@@ -28,7 +72,8 @@ class Lame {
         new EventEmitter() as LameProgressEmitter;
 
     private readonly options: LameOptionsBag;
-    private readonly args: Array<string | number>;
+    private readonly builder: LameOptions;
+    private readonly args: string[];
 
     private filePath?: string;
     private fileBuffer?: Buffer;
@@ -43,7 +88,8 @@ class Lame {
 
     constructor(options: LameOptionsBag) {
         this.options = options;
-        this.args = new LameOptions(this.options).getArguments();
+        this.builder = new LameOptions(this.options);
+        this.args = this.builder.getArguments();
         this.lamePath = resolveLameBinary();
         this.tempPath = join(tmpdir(), "node-lame");
     }
@@ -155,16 +201,23 @@ class Lame {
      */
     private async spawnLameAndTrackProgress(
         inputFilePath: string,
-        baseArgs: Array<string | number>,
+        baseArgs: string[],
         type: ProgressKind,
     ): Promise<this> {
-        const args = [...baseArgs, "--disptime", "1"].map((value) =>
-            String(value),
-        );
+        const args = [...baseArgs];
+
+        if (
+            this.builder.shouldUseDefaultDisptime() &&
+            !args.includes("--disptime")
+        ) {
+            args.push("--disptime", "1");
+        }
+
+        const normalizedArgs = args.map((value) => String(value));
 
         const { outputPath, bufferOutput } =
             await this.prepareOutputTarget(type);
-        const spawnArgs = [inputFilePath, outputPath, ...args];
+        const spawnArgs = [inputFilePath, outputPath, ...normalizedArgs];
 
         this.status = {
             started: true,
@@ -194,68 +247,46 @@ class Lame {
                         this.status.progress,
                         this.status.eta,
                     ]);
-                } else if (
-                    type === "encode" &&
-                    /\((( [0-9])|([0-9]{2})|(100))%\)\|/.test(content)
-                ) {
-                    const progressMatch = content.match(
-                        /\((( [0-9])|([0-9]{2})|(100))%\)\|/,
-                    );
-                    const etaMatch = content.match(/[0-9]{1,2}:[0-9][0-9] /);
+                } else if (type === "encode") {
+                    const parsed = parseEncodeProgressLine(content);
+                    if (parsed) {
+                        if (
+                            parsed.progress !== undefined &&
+                            parsed.progress > this.status.progress
+                        ) {
+                            this.status.progress = parsed.progress;
+                        }
 
-                    const progress =
-                        progressMatch && progressMatch[1]
-                            ? Number(progressMatch[1])
-                            : undefined;
-                    const eta = etaMatch ? etaMatch[0].trim() : undefined;
-
-                    if (
-                        progress !== undefined &&
-                        progress > this.status.progress
-                    ) {
-                        this.status.progress = progress;
-                    }
-
-                    if (eta) {
-                        this.status.eta = eta;
-                    }
-
-                    this.emitter.emit("progress", [
-                        this.status.progress,
-                        this.status.eta,
-                    ]);
-                } else if (
-                    type === "decode" &&
-                    /[0-9]{1,10}\/[0-9]{1,10}/.test(content)
-                ) {
-                    const progressMatch = content.match(
-                        /[0-9]{1,10}\/[0-9]{1,10}/,
-                    );
-
-                    if (progressMatch) {
-                        const [current, total] = progressMatch[0]
-                            .split("/")
-                            .map(Number);
-                        const progress = Math.floor((current / total) * 100);
-
-                        if (!Number.isNaN(progress)) {
-                            this.status.progress = progress;
+                        if (parsed.eta) {
+                            this.status.eta = parsed.eta;
                         }
 
                         this.emitter.emit("progress", [
                             this.status.progress,
                             this.status.eta,
                         ]);
+                        return;
                     }
-                } else if (
-                    content.startsWith("lame: ") ||
-                    content.startsWith("Warning: ") ||
-                    content.includes("Error ")
-                ) {
-                    const message = content.startsWith("lame: ")
-                        ? content
-                        : `lame: ${content}`;
-                    this.emitter.emit("error", new Error(message));
+                }
+
+                if (type === "decode") {
+                    const parsed = parseDecodeProgressLine(content);
+                    if (parsed !== null) {
+                        if (!Number.isNaN(parsed)) {
+                            this.status.progress = parsed;
+                        }
+
+                        this.emitter.emit("progress", [
+                            this.status.progress,
+                            this.status.eta,
+                        ]);
+                        return;
+                    }
+                }
+
+                const normalized = normalizeCliMessage(content);
+                if (normalized) {
+                    this.emitter.emit("error", new Error(normalized));
                 }
             };
 
@@ -366,9 +397,11 @@ class Lame {
 
     private async ensureOutputDirectoryExists(filePath: string) {
         const dir = dirname(filePath);
-        if (dir) {
-            await mkdir(dir, { recursive: true });
+        if (!dir || dir === ".") {
+            return;
         }
+
+        await mkdir(dir, { recursive: true });
     }
 
     private async generateTempFilePath(
@@ -398,4 +431,9 @@ class Lame {
     }
 }
 
-export { Lame };
+export {
+    Lame,
+    normalizeCliMessage,
+    parseDecodeProgressLine,
+    parseEncodeProgressLine,
+};

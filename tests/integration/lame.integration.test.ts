@@ -27,13 +27,17 @@ const shouldRun = process.platform !== "win32";
         return binaryPath;
     };
 
-    const createPassthroughBinary = async () => {
-        const workdir = await createWorkdir();
-        const script = `#!/usr/bin/env node
+const createPassthroughBinary = async () => {
+    const workdir = await createWorkdir();
+    const script = `#!/usr/bin/env node
 import { readFileSync, writeFileSync } from 'node:fs';
 const [, , input, output] = process.argv;
 const payload = readFileSync(input);
 writeFileSync(output, payload);
+const logPath = process.env.LAME_TEST_LOG;
+if (logPath) {
+  writeFileSync(logPath, JSON.stringify({ argv: process.argv.slice(2) }), 'utf8');
+}
 const isDecode = process.argv.includes('--decode');
 if (isDecode) {
   console.error('1/2');
@@ -44,8 +48,8 @@ if (isDecode) {
 }
 process.exit(0);
 `;
-        return createBinary(workdir, script);
-    };
+    return createBinary(workdir, script);
+};
 
     const createErrorBinary = async (exitCode: number, message: string) => {
         const workdir = await createWorkdir();
@@ -56,7 +60,21 @@ process.exit(${exitCode});
         return createBinary(workdir, script);
     };
 
+    const originalLogEnv = process.env.LAME_TEST_LOG;
+
+    const readLoggedArgs = async (logPath: string) => {
+        const raw = await readFile(logPath, "utf8");
+        const parsed = JSON.parse(raw) as { argv: string[] };
+        return parsed.argv;
+    };
+
     afterEach(async () => {
+        if (originalLogEnv === undefined) {
+            delete process.env.LAME_TEST_LOG;
+        } else {
+            process.env.LAME_TEST_LOG = originalLogEnv;
+        }
+
         while (binaries.length) {
             binaries.pop();
         }
@@ -67,148 +85,686 @@ process.exit(${exitCode});
         );
     });
 
-    it("encodes a buffer to memory via the CLI wrapper", async () => {
-        const workdir = await createWorkdir();
-        const fakeBinaryPath = await createPassthroughBinary();
+    describe("Encoding scenarios", () => {
+        it("encodes buffers to buffers with constant bitrate", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-buffer-log.json");
+            process.env.LAME_TEST_LOG = logPath;
 
-        const encoder = new Lame({ output: "buffer", bitrate: 128 });
-        encoder.setBuffer(Buffer.from("integration-buffer-input"));
-        encoder.setLamePath(fakeBinaryPath);
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({ output: "buffer", bitrate: 160 });
+            encoder.setBuffer(Buffer.from("integration-buffer-input"));
+            encoder.setLamePath(fakeBinaryPath);
 
-        await encoder.encode();
+            await encoder.encode();
 
-        expect(encoder.getBuffer().toString()).toBe(
-            "integration-buffer-input",
-        );
-        expect(encoder.getStatus().finished).toBe(true);
-        expect(encoder.getStatus().progress).toBe(100);
-
-        await rm(workdir, { recursive: true, force: true });
-    });
-
-    it("encodes a file to disk and reads the resulting output", async () => {
-        const workdir = await createWorkdir();
-        const fakeBinaryPath = await createPassthroughBinary();
-
-        const inputPath = join(workdir, "input.raw");
-        const outputPath = join(workdir, "output.mp3");
-        const inputBuffer = randomBytes(32);
-        await writeFile(inputPath, Uint8Array.from(inputBuffer));
-
-        const encoder = new Lame({ output: outputPath, bitrate: 128 });
-        encoder.setFile(inputPath);
-        encoder.setLamePath(fakeBinaryPath);
-
-        await encoder.encode();
-
-        const encoded = await readFile(outputPath);
-
-        expect(encoded.equals(Uint8Array.from(inputBuffer))).toBe(true);
-        expect(encoder.getFile()).toBe(outputPath);
-    });
-
-    it("decodes a file while reporting progress", async () => {
-        const workdir = await createWorkdir();
-        const fakeBinaryPath = await createPassthroughBinary();
-
-        const mp3Path = join(workdir, "input.mp3");
-        const mp3Payload = randomBytes(24);
-        await writeFile(mp3Path, Uint8Array.from(mp3Payload));
-
-        const encoder = new Lame({ output: "buffer", bitrate: 128 });
-        encoder.setFile(mp3Path);
-        encoder.setLamePath(fakeBinaryPath);
-
-        await encoder.decode();
-
-        expect(encoder.getBuffer()).toBeInstanceOf(Buffer);
-        expect(encoder.getStatus().progress).toBe(100);
-        expect(encoder.getStatus().eta).toBe("00:00");
-    });
-
-    it("passes through an extensive option set to the CLI", async () => {
-        const workdir = await createWorkdir();
-        const fakeBinaryPath = await createPassthroughBinary();
-
-        const inputPath = join(workdir, "input.raw");
-        const outputPath = join(workdir, "output.mp3");
-        const inputPayload = randomBytes(48);
-        await writeFile(inputPath, Uint8Array.from(inputPayload));
-
-        const encoder = new Lame({
-            output: outputPath,
-            raw: true,
-            "swap-bytes": true,
-            sfreq: 44.1,
-            bitwidth: 16,
-            signed: true,
-            unsigned: true,
-            "little-endian": true,
-            "big-endian": true,
-            mp2Input: true,
-            mp3Input: true,
-            mode: "j",
-            "to-mono": true,
-            "channel-different-block-sizes": true,
-            freeformat: "LAME",
-            "disable-info-tag": true,
-            comp: 1.2,
-            scale: 0.8,
-            "scale-l": 0.9,
-            "scale-r": 0.95,
-            "replaygain-fast": true,
-            "replaygain-accurate": true,
-            "no-replaygain": true,
-            "clip-detect": true,
-            preset: "standard",
-            noasm: "sse",
-            quality: 4,
-            bitrate: 192,
-            "force-bitrate": true,
-            cbr: true,
-            abr: 192,
-            vbr: true,
-            "vbr-quality": 3,
-            "ignore-noise-in-sfb21": true,
-            emp: "n",
-            "crc-error-protection": true,
-            nores: true,
-            "strictly-enforce-ISO": true,
-            lowpass: 18,
-            "lowpass-width": 2,
-            highpass: 3,
-            "highpass-width": 2,
-            resample: 32,
-            meta: {
-                title: "Title",
-                artist: "Artist",
-                album: "Album",
-                year: "2024",
-                comment: "Comment",
-                track: "1",
-                genre: "Genre",
-                "add-id3v2": true,
-                "id3v1-only": true,
-                "id3v2-only": true,
-                "id3v2-latin1": true,
-                "id3v2-utf16": true,
-                "space-id3v1": true,
-                "pad-id3v2-size": 2,
-                "genre-list": "Rock,Pop",
-                "ignore-tag-errors": true,
-            },
-            "mark-as-copyrighted": true,
-            "mark-as-copy": true,
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(expect.arrayContaining(["-b", "160"]));
+            expect(encoder.getBuffer().toString()).toBe(
+                "integration-buffer-input",
+            );
+            expect(encoder.getStatus().finished).toBe(true);
         });
 
-        encoder.setFile(inputPath);
-        encoder.setLamePath(fakeBinaryPath);
+        it("encodes files to disk with constant bitrate", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-file-log.json");
+            process.env.LAME_TEST_LOG = logPath;
 
-        await encoder.encode();
+            const fakeBinaryPath = await createPassthroughBinary();
+            const inputPath = join(workdir, "input.raw");
+            const outputPath = join(workdir, "output.mp3");
+            const inputBuffer = randomBytes(24);
+            await writeFile(inputPath, Uint8Array.from(inputBuffer));
 
-        const outputPayload = await readFile(outputPath);
-        expect(outputPayload.equals(Uint8Array.from(inputPayload))).toBe(true);
-        expect(encoder.getStatus().finished).toBe(true);
+            const encoder = new Lame({ output: outputPath, bitrate: 192 });
+            encoder.setFile(inputPath);
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const produced = await readFile(outputPath);
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(expect.arrayContaining([inputPath, outputPath]));
+            expect(argv).toEqual(expect.arrayContaining(["-b", "192"]));
+            expect(produced.equals(Uint8Array.from(inputBuffer))).toBe(true);
+        });
+
+        it("encodes raw stereo input with channel and format options", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-raw-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const inputPath = join(workdir, "raw.pcm");
+            const outputPath = join(workdir, "raw.mp3");
+            await writeFile(inputPath, randomBytes(32));
+
+            const encoder = new Lame({
+                output: outputPath,
+                raw: true,
+                "swap-bytes": true,
+                sfreq: 32,
+                bitwidth: 16,
+                "little-endian": true,
+                mode: "m",
+                "to-mono": true,
+                freeformat: true,
+            });
+            encoder.setFile(inputPath);
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining([
+                    inputPath,
+                    outputPath,
+                    "-r",
+                    "-x",
+                    "-s",
+                    "32",
+                    "-m",
+                    "m",
+                    "-a",
+                    "--freeformat",
+                ]),
+            );
+        });
+
+        it("encodes using numeric preset and old VBR routine", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-preset-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({
+                output: "buffer",
+                preset: 192,
+                "vbr-old": true,
+                quality: 2,
+            });
+            encoder.setBuffer(Buffer.from("preset-input"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--preset", "192", "--vbr-old", "-q", "2"]),
+            );
+        });
+
+        it("encodes with ABR and bitrate bounds", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-abr-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({
+                output: "buffer",
+                abr: 210,
+                "max-bitrate": 256,
+                "vbr-new": true,
+            });
+            encoder.setBuffer(Buffer.from("abr-input"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--abr", "210", "-B", "256", "--vbr-new"]),
+            );
+        });
+
+        it("encodes with metadata and custom frames", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-meta-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({
+                output: "buffer",
+                bitrate: 192,
+                meta: {
+                    title: "Demo",
+                    artist: "Artist",
+                    custom: {
+                        TXXX: "Recorded with node-lame",
+                    },
+                    "pad-id3v2": true,
+                },
+            });
+            encoder.setBuffer(Buffer.from("meta-input"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining([
+                    "--tt",
+                    "Demo",
+                    "--ta",
+                    "Artist",
+                    "--pad-id3v2",
+                    "--tv",
+                    "TXXX=Recorded with node-lame",
+                ]),
+            );
+        });
+
+        it("encodes gapless albums with nogap options", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-gapless-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const track1 = join(workdir, "track-1.raw");
+            const track2 = join(workdir, "track-2.raw");
+            const track3 = join(workdir, "track-3.raw");
+            await Promise.all(
+                [track1, track2, track3].map((file) =>
+                    writeFile(file, randomBytes(8)),
+                ),
+            );
+            const gaplessDir = join(workdir, "gapless-output");
+            const encoder = new Lame({
+                output: join(gaplessDir, "track-1.mp3"),
+                bitrate: 160,
+                nogap: [track2, track3],
+                "nogapout": gaplessDir,
+                "nogaptags": true,
+            });
+            encoder.setFile(track1);
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(expect.arrayContaining(["--nogap", track2, track3]));
+            expect(argv).toEqual(expect.arrayContaining(["--nogapout", gaplessDir]));
+            expect(argv).toContain("--nogaptags");
+        });
+
+        it("encodes with gain, scale, and ReplayGain toggles", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-gain-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({
+                output: "buffer",
+                gain: 3,
+                scale: 0.8,
+                "scale-l": 0.9,
+                "scale-r": 0.95,
+                "replaygain-accurate": true,
+                "no-replaygain": true,
+                "clip-detect": true,
+            });
+            encoder.setBuffer(Buffer.from("gain-input"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining([
+                    "--gain",
+                    "3",
+                    "--scale",
+                    "0.8",
+                    "--scale-l",
+                    "0.9",
+                    "--scale-r",
+                    "0.95",
+                    "--replaygain-accurate",
+                    "--noreplaygain",
+                    "--clipdetect",
+                ]),
+            );
+        });
+
+        it("encodes with strict ISO enforcement and freeformat", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-iso-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({
+                output: "buffer",
+                "strictly-enforce-ISO": true,
+                freeformat: true,
+                "no-histogram": true,
+                disptime: false,
+            });
+            encoder.setBuffer(Buffer.from("iso-input"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining([
+                    "--strictly-enforce-ISO",
+                    "--freeformat",
+                    "--nohist",
+                ]),
+            );
+            expect(argv).not.toContain("--disptime");
+        });
+
+        it("encodes with priority and verbose logging", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-priority-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({
+                output: "buffer",
+                priority: 4,
+                disptime: 4,
+                verbose: true,
+            });
+            encoder.setBuffer(Buffer.from("priority-input"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining([
+                    "--priority",
+                    "4",
+                    "--disptime",
+                    "4",
+                    "--verbose",
+                ]),
+            );
+        });
+    });
+
+    describe("Decoding scenarios", () => {
+        const createMp3File = async (dir: string, name: string) => {
+            const file = join(dir, name);
+            await writeFile(file, randomBytes(32));
+            return file;
+        };
+
+        it("decodes files to buffers", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-buffer-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "input.mp3");
+
+            const decoder = new Lame({ output: "buffer" });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv[0]).toBe(mp3Path);
+            expect(argv).toContain("--decode");
+            expect(decoder.getBuffer()).toBeInstanceOf(Buffer);
+        });
+
+        it("decodes files to explicit output paths", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-file-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "sample.mp3");
+            const outputPath = join(workdir, "decoded.raw");
+
+            const decoder = new Lame({ output: outputPath });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const decoded = await readFile(outputPath);
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(expect.arrayContaining([mp3Path, outputPath, "--decode"]));
+            expect(decoded.length).toBeGreaterThan(0);
+        });
+
+        it("decodes buffers to disk outputs", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-buffer-to-file.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const outputPath = join(workdir, "buffer-decode.raw");
+
+            const decoder = new Lame({ output: outputPath });
+            decoder.setBuffer(Buffer.from("buffer-mp3"));
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(expect.arrayContaining([outputPath, "--decode"]));
+            const output = await readFile(outputPath);
+            expect(output.length).toBeGreaterThan(0);
+        });
+
+        it("decodes with mp3 delay compensation", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-delay-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "delay.mp3");
+
+            const decoder = new Lame({
+                output: "buffer",
+                "decode-mp3delay": 576,
+            });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--decode-mp3delay", "576", "--decode"]),
+            );
+        });
+
+        it("decodes with resample and lowpass options", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-resample-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "resample.mp3");
+
+            const decoder = new Lame({
+                output: "buffer",
+                resample: 32,
+                lowpass: 18,
+            });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--resample", "32", "--lowpass", "18", "--decode"]),
+            );
+        });
+
+        it("decodes with highpass filter and no disptime", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-highpass-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "highpass.mp3");
+
+            const decoder = new Lame({
+                output: "buffer",
+                highpass: 5,
+                disptime: false,
+            });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(expect.arrayContaining(["--highpass", "5", "--decode"]));
+            expect(argv).not.toContain("--disptime");
+        });
+
+        it("decodes with priority and quiet mode", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-priority-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "priority.mp3");
+
+            const decoder = new Lame({
+                output: "buffer",
+                priority: 2,
+                quiet: true,
+            });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--priority", "2", "--quiet", "--decode"]),
+            );
+        });
+
+        it("decodes with silent output", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-silent-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "silent.mp3");
+
+            const decoder = new Lame({
+                output: "buffer",
+                silent: true,
+            });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--silent", "--decode"]),
+            );
+        });
+
+        it("decodes while passing metadata flags", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-meta-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "meta.mp3");
+
+            const decoder = new Lame({
+                output: "buffer",
+                meta: {
+                    title: "Decoded",
+                    custom: ["TXXX=decoded"],
+                },
+            });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--tt", "Decoded", "--tv", "TXXX=decoded", "--decode"]),
+            );
+        });
+
+        it("decodes with strict ISO enforcement", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "decode-iso-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const mp3Path = await createMp3File(workdir, "iso.mp3");
+
+            const decoder = new Lame({
+                output: "buffer",
+                "strictly-enforce-ISO": true,
+            });
+            decoder.setFile(mp3Path);
+            decoder.setLamePath(fakeBinaryPath);
+
+            await decoder.decode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(
+                expect.arrayContaining(["--strictly-enforce-ISO", "--decode"]),
+            );
+        });
+    });
+
+    describe("Error handling and validation", () => {
+        it("bubbles up CLI error messages", async () => {
+            const fakeBinaryPath = await createErrorBinary(
+                1,
+                "Error simulated failure",
+            );
+
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            encoder.setBuffer(Buffer.from("will fail"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await expect(encoder.encode()).rejects.toThrow(
+                "lame: Error simulated failure",
+            );
+        });
+
+        it("treats exit code 255 as unexpected termination", async () => {
+            const fakeBinaryPath = await createErrorBinary(
+                255,
+                "Unexpected termination",
+            );
+
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            encoder.setBuffer(Buffer.from("will fail badly"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await expect(encoder.encode()).rejects.toThrow(
+                "Unexpected termination of the process",
+            );
+        });
+
+        it("validates that an input source is set before encoding", async () => {
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            await expect(encoder.encode()).rejects.toThrow(
+                "Audio file to encode is not set",
+            );
+        });
+
+        it("throws when accessing outputs before processing", () => {
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            expect(() => encoder.getBuffer()).toThrow(
+                "Audio is not yet decoded/encoded",
+            );
+            expect(() => encoder.getFile()).toThrow(
+                "Audio is not yet decoded/encoded",
+            );
+        });
+
+        it("guards invalid path setters", () => {
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            expect(() => encoder.setLamePath("")).toThrow(
+                "Lame path must be a non-empty string",
+            );
+            expect(() => encoder.setTempPath("   ")).toThrow(
+                "Temp path must be a non-empty string",
+            );
+            expect(() => encoder.setFile("/does/not/exist")).toThrow(
+                "Audio file (path) does not exist",
+            );
+        });
+
+        it("propagates spawn errors when the binary cannot be executed", async () => {
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            encoder.setBuffer(Buffer.from("input"));
+            encoder.setLamePath("/non-existent/node-lame-binary");
+
+            await expect(encoder.encode()).rejects.toThrow(/ENOENT/);
+        });
+
+        it("rejects when CLI output cannot be read as Buffer", async () => {
+            const workdir = await createWorkdir();
+            const fakeBinaryPath = await createPassthroughBinary();
+
+            const originalIsBuffer = Buffer.isBuffer;
+            let callCount = 0;
+            const isBufferSpy = vi
+                .spyOn(Buffer, "isBuffer")
+                .mockImplementation((value: unknown) => {
+                    callCount += 1;
+                    if (callCount === 2) {
+                        return false;
+                    }
+                    return originalIsBuffer(value);
+                });
+
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            encoder.setBuffer(Buffer.from("integration-non-buffer"));
+            encoder.setLamePath(fakeBinaryPath);
+
+            await expect(encoder.encode()).rejects.toThrow(
+                "Unexpected output format received from temporary file",
+            );
+
+            isBufferSpy.mockRestore();
+            await rm(workdir, { recursive: true, force: true });
+        });
+
+        it("validates advanced encoder options before execution", () => {
+            expect(
+                () =>
+                    new Lame({
+                        output: "buffer",
+                        resample: 20,
+                    } as unknown as any),
+            ).toThrow(
+                "lame: Invalid option: 'resample' is not in range of 8, 11.025, 12, 16, 22.05, 24, 32, 44.1 or 48.",
+            );
+
+            expect(
+                () =>
+                    new Lame({
+                        output: "buffer",
+                        meta: {
+                            unexpected: "value",
+                        },
+                    } as unknown as any),
+            ).toThrow("lame: Invalid option: 'meta' unknown property 'unexpected'");
+        });
+
+        it("removes temporary artifacts when invoked directly", async () => {
+            const workdir = await createWorkdir();
+            const rawPath = join(workdir, "temp.raw");
+            const encodedPath = join(workdir, "temp.mp3");
+            await writeFile(rawPath, Buffer.from("raw"));
+            await writeFile(encodedPath, Buffer.from("encoded"));
+
+            const encoder = new Lame({ output: "buffer", bitrate: 128 });
+            const encoderInternals = encoder as unknown as {
+                fileBufferTempFilePath?: string;
+                progressedBufferTempFilePath?: string;
+                removeTempArtifacts: () => Promise<void>;
+            };
+
+            encoderInternals.fileBufferTempFilePath = rawPath;
+            encoderInternals.progressedBufferTempFilePath = encodedPath;
+
+            await encoderInternals.removeTempArtifacts();
+
+            await expect(readFile(rawPath)).rejects.toMatchObject({ code: "ENOENT" });
+            await expect(readFile(encodedPath)).rejects.toMatchObject({
+                code: "ENOENT",
+            });
+        });
     });
 
     it("bubbles up CLI error messages", async () => {

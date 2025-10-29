@@ -1,10 +1,11 @@
-import type { LameOptionsBag } from "../types";
+import type { LameOptionsBag, PriorityLevel } from "../types";
 
 /**
  * Translates option objects into the argument list expected by the LAME CLI.
  */
 class LameOptions {
     private readonly args: string[] = [];
+    private useDefaultDisptime = true;
     /**
      * Validate all options and build argument array for binary
      * @param {Object} options
@@ -32,6 +33,12 @@ class LameOptions {
                 case "swap-bytes":
                     arg = this.swapBytes(value);
                     break;
+                case "swap-channel":
+                    arg = this.swapChannel(value);
+                    break;
+                case "gain":
+                    arg = this.gain(value);
+                    break;
                 case "sfreq":
                     arg = this.sfreq(value);
                     break;
@@ -49,6 +56,9 @@ class LameOptions {
                     break;
                 case "big-endian":
                     arg = this.bigEndian(value);
+                    break;
+                case "mp1Input":
+                    arg = this.mp1Input(value);
                     break;
                 case "mp2Input":
                     arg = this.mp2Input(value);
@@ -70,6 +80,18 @@ class LameOptions {
                     break;
                 case "disable-info-tag":
                     arg = this.disableInfoTag(value);
+                    break;
+                case "nogap":
+                    arg = this.nogap(value);
+                    break;
+                case "nogapout":
+                    arg = this.nogapout(value);
+                    break;
+                case "nogaptags":
+                    arg = this.nogaptags(value);
+                    break;
+                case "out-dir":
+                    arg = this.outDir(value);
                     break;
                 case "comp":
                     arg = this.comp(value);
@@ -104,8 +126,17 @@ class LameOptions {
                 case "quality":
                     arg = this.quality(value);
                     break;
+                case "quality-high":
+                    arg = this.qualityHigh(value);
+                    break;
+                case "fast-encoding":
+                    arg = this.fastEncoding(value);
+                    break;
                 case "bitrate":
                     arg = this.bitrate(value);
+                    break;
+                case "max-bitrate":
+                    arg = this.maxBitrate(value);
                     break;
                 case "force-bitrate":
                     arg = this.forceBitrate(value);
@@ -121,6 +152,12 @@ class LameOptions {
                     break;
                 case "vbr-quality":
                     arg = this.vbrQuality(value);
+                    break;
+                case "vbr-old":
+                    arg = this.vbrOld(value);
+                    break;
+                case "vbr-new":
+                    arg = this.vbrNew(value);
                     break;
                 case "ignore-noise-in-sfb21":
                     arg = this.ignoreNoiseInSfb21(value);
@@ -158,6 +195,42 @@ class LameOptions {
                 case "resample":
                     arg = this.resample(value);
                     break;
+                case "decode-mp3delay":
+                    arg = this.decodeMp3Delay(value);
+                    break;
+                case "priority":
+                    arg = this.priority(value);
+                    break;
+                case "disptime":
+                    arg = this.disptime(value);
+                    break;
+                case "silent":
+                    arg = this.silent(value);
+                    break;
+                case "quiet":
+                    arg = this.quiet(value);
+                    break;
+                case "verbose":
+                    arg = this.verbose(value);
+                    break;
+                case "help":
+                    arg = this.help(value);
+                    break;
+                case "usage":
+                    arg = this.usage(value);
+                    break;
+                case "longhelp":
+                    arg = this.longHelp(value);
+                    break;
+                case "version":
+                    arg = this.version(value);
+                    break;
+                case "license":
+                    arg = this.license(value);
+                    break;
+                case "no-histogram":
+                    arg = this.noHistogram(value);
+                    break;
                 case "meta":
                     arg = this.meta(value);
                     break;
@@ -178,6 +251,10 @@ class LameOptions {
         return this.args;
     }
 
+    public shouldUseDefaultDisptime() {
+        return this.useDefaultDisptime;
+    }
+
     private raw(value: unknown) {
         if (value == true) {
             return [`-r`];
@@ -192,6 +269,28 @@ class LameOptions {
         } else {
             return undefined;
         }
+    }
+
+    private swapChannel(value: unknown) {
+        if (value == true) {
+            return [`--swap-channel`];
+        }
+
+        return undefined;
+    }
+
+    private gain(value: unknown) {
+        if (value === undefined) {
+            return undefined;
+        }
+
+        if (typeof value === "number" && value >= -20 && value <= 12) {
+            return [`--gain`, String(value)];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'gain' must be a number between -20 and 12.",
+        );
     }
 
     private sfreq(value: unknown) {
@@ -256,6 +355,14 @@ class LameOptions {
         }
     }
 
+    private mp1Input(value: unknown) {
+        if (value == true) {
+            return [`--mp1input`];
+        } else {
+            return undefined;
+        }
+    }
+
     private mp2Input(value: unknown) {
         if (value == true) {
             return [`--mp2input`];
@@ -280,12 +387,13 @@ class LameOptions {
             value == "d" ||
             value == "m" ||
             value == "l" ||
-            value == "r"
+            value == "r" ||
+            value == "a"
         ) {
             return [`-m`, String(value)];
         } else {
             throw new Error(
-                "lame: Invalid option: 'mode' is not in range of 's', 'j', 'f', 'd', 'm', 'l' or 'r'.",
+                "lame: Invalid option: 'mode' is not in range of 's', 'j', 'f', 'd', 'm', 'l', 'r' or 'a'.",
             );
         }
     }
@@ -307,19 +415,31 @@ class LameOptions {
     }
 
     private freeformat(value: unknown) {
-        if (
-            value == "FreeAmp" ||
-            value == "in_mpg123" ||
-            value == "l3dec" ||
-            value == "LAME" ||
-            value == "MAD"
-        ) {
-            return [`--freeformat`, String(value)];
-        } else {
+        if (value == null || value === false) {
+            return undefined;
+        }
+
+        if (typeof value === "string") {
+            if (
+                value === "FreeAmp" ||
+                value === "in_mpg123" ||
+                value === "l3dec" ||
+                value === "LAME" ||
+                value === "MAD"
+            ) {
+                return [`--freeformat`];
+            }
+
             throw new Error(
-                "lame: Invalid option: 'mode' is not in range of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'.",
+                "lame: Invalid option: 'freeformat' string value must be one of 'FreeAmp', 'in_mpg123', 'l3dec', 'LAME', 'MAD'.",
             );
         }
+
+        if (value == true) {
+            return [`--freeformat`];
+        }
+
+        throw new Error("lame: Invalid option: 'freeformat' must be boolean.");
     }
 
     private disableInfoTag(value: unknown) {
@@ -328,6 +448,64 @@ class LameOptions {
         } else {
             return undefined;
         }
+    }
+
+    private nogap(value: unknown) {
+        if (value == null) {
+            return undefined;
+        }
+
+        if (
+            Array.isArray(value) &&
+            value.length > 0 &&
+            value.every((item) => typeof item === "string" && item.trim() !== "")
+        ) {
+            return [`--nogap`, ...value];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'nogap' must be a non-empty array of file paths.",
+        );
+    }
+
+    private nogapout(value: unknown) {
+        if (value == null) {
+            return undefined;
+        }
+
+        if (typeof value === "string" && value.trim() !== "") {
+            return [`--nogapout`, value];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'nogapout' must be a non-empty string path.",
+        );
+    }
+
+    private nogaptags(value: unknown) {
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        if (value == true) {
+            return [`--nogaptags`];
+        }
+
+        throw new Error("lame: Invalid option: 'nogaptags' must be boolean.");
+    }
+
+    private outDir(value: unknown) {
+        if (value == null) {
+            return undefined;
+        }
+
+        if (typeof value === "string" && value.trim() !== "") {
+            return [`--out-dir`, value];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'out-dir' must be a non-empty string path.",
+        );
     }
 
     private comp(value: unknown) {
@@ -379,18 +557,74 @@ class LameOptions {
     }
 
     private preset(value: unknown) {
-        if (
-            value == "medium" ||
-            value == "standard" ||
-            value == "extreme" ||
-            value == "insane"
-        ) {
-            return [`--preset`, String(value)];
-        } else {
-            throw new Error(
-                "lame: Invalid option: 'mode' is not in range of 'medium', 'standard', 'extreme' or 'insane'.",
-            );
+        if (value == null) {
+            return undefined;
         }
+
+        if (typeof value === "number" && value >= 8 && value <= 640) {
+            return [`--preset`, String(value)];
+        }
+
+        if (typeof value !== "string") {
+            return this.invalidPreset();
+        }
+
+        const trimmed = value.trim();
+        if (trimmed === "") {
+            throw new Error("lame: Invalid option: 'preset' cannot be empty.");
+        }
+
+        const tokens = trimmed.split(/\s+/);
+        const [first, second] = tokens;
+
+        const singleValuePresets = [
+            "medium",
+            "standard",
+            "extreme",
+            "insane",
+            "phone",
+            "phon+",
+            "lw",
+            "mw-eu",
+            "mw-us",
+            "voice",
+            "fm",
+            "radio",
+            "hifi",
+            "cd",
+            "studio",
+        ];
+
+        if (tokens.length === 1) {
+            if (singleValuePresets.includes(first) || /^[0-9]+$/.test(first)) {
+                return [`--preset`, first];
+            }
+
+            return this.invalidPreset();
+        }
+
+        if (
+            tokens.length === 2 &&
+            first === "fast" &&
+            (second === "medium" ||
+                second === "standard" ||
+                second === "extreme" ||
+                /^[0-9]+$/.test(second))
+        ) {
+            return [`--preset`, "fast", second];
+        }
+
+        if (tokens.length === 2 && first === "cbr" && /^[0-9]+$/.test(second)) {
+            return [`--preset`, "cbr", second];
+        }
+
+        return this.invalidPreset();
+    }
+
+    private invalidPreset(): never {
+        throw new Error(
+            "lame: Invalid option: 'preset' must be a supported preset keyword, numeric bitrate, or preset tuple like 'fast <value>' or 'cbr <bitrate>'.",
+        );
     }
 
     private noasm(value: unknown) {
@@ -411,6 +645,35 @@ class LameOptions {
                 "lame: Invalid option: 'quality' is not in range of 0 to 9.",
             );
         }
+    }
+
+    private qualityHigh(value: unknown) {
+        if (value == true) {
+            return [`-h`];
+        }
+
+        if (value === undefined || value === false) {
+            /* c8 ignore next */
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'quality-high' must be boolean.",
+        );
+    }
+
+    private fastEncoding(value: unknown) {
+        if (value == true) {
+            return [`-f`];
+        }
+
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'fast-encoding' must be boolean.",
+        );
     }
 
     private bitrate(value: unknown) {
@@ -440,6 +703,37 @@ class LameOptions {
                 "lame: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.",
             );
         }
+    }
+
+    private maxBitrate(value: unknown) {
+        if (
+            value == 8 ||
+            value == 16 ||
+            value == 24 ||
+            value == 32 ||
+            value == 40 ||
+            value == 48 ||
+            value == 56 ||
+            value == 64 ||
+            value == 80 ||
+            value == 96 ||
+            value == 112 ||
+            value == 128 ||
+            value == 144 ||
+            value == 160 ||
+            value == 192 ||
+            value == 224 ||
+            value == 256 ||
+            value == 320
+        ) {
+            return [`-B`, String(value)];
+        } else if (value === undefined) {
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'max-bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.",
+        );
     }
 
     private forceBitrate(value: unknown) {
@@ -484,6 +778,34 @@ class LameOptions {
                 "lame: Invalid option: 'vbrQuality' is not in range of 0 to 9.",
             );
         }
+    }
+
+    private vbrOld(value: unknown) {
+        if (value == true) {
+            return [`--vbr-old`];
+        }
+
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'vbr-old' must be boolean.",
+        );
+    }
+
+    private vbrNew(value: unknown) {
+        if (value == true) {
+            return [`--vbr-new`];
+        }
+
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'vbr-new' must be boolean.",
+        );
     }
 
     private ignoreNoiseInSfb21(value: unknown) {
@@ -580,6 +902,186 @@ class LameOptions {
         }
     }
 
+    private decodeMp3Delay(value: unknown) {
+        if (value == null) {
+            return undefined;
+        }
+
+        if (typeof value === "number" && Number.isFinite(value)) {
+            return [`--decode-mp3delay`, String(value)];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'decode-mp3delay' must be a finite number.",
+        );
+    }
+
+    private priority(value: unknown) {
+        if (value == null) {
+            return undefined;
+        }
+
+        if (
+            typeof value === "number" &&
+            Number.isInteger(value) &&
+            value >= 0 &&
+            value <= 4
+        ) {
+            return [`--priority`, String(value as PriorityLevel)];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'priority' must be an integer between 0 and 4.",
+        );
+    }
+
+    private disptime(value: unknown) {
+        if (value === false) {
+            this.useDefaultDisptime = false;
+            return undefined;
+        }
+
+        if (value == null) {
+            return undefined;
+        }
+
+        if (typeof value === "number" && value > 0) {
+            this.useDefaultDisptime = false;
+            return [`--disptime`, String(value)];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'disptime' must be a positive number of seconds or false to disable progress output.",
+        );
+    }
+
+    private silent(value: unknown) {
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        if (value == true) {
+            return [`--silent`];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'silent' must be boolean.",
+        );
+    }
+
+    private quiet(value: unknown) {
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        if (value == true) {
+            return [`--quiet`];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'quiet' must be boolean.",
+        );
+    }
+
+    private verbose(value: unknown) {
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        if (value == true) {
+            return [`--verbose`];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'verbose' must be boolean.",
+        );
+    }
+
+    private help(value: unknown) {
+        return this.helpLike("--help", value);
+    }
+
+    private usage(value: unknown) {
+        return this.helpLike("--usage", value);
+    }
+
+    private longHelp(value: unknown) {
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        if (value == true) {
+            return [`--longhelp`];
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'longhelp' must be boolean.",
+        );
+    }
+
+    private version(value: unknown) {
+        if (value == true) {
+            return [`--version`];
+        }
+
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'version' must be boolean.",
+        );
+    }
+
+    private license(value: unknown) {
+        if (value == true) {
+            return [`--license`];
+        }
+
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'license' must be boolean.",
+        );
+    }
+
+    private noHistogram(value: unknown) {
+        if (value == true) {
+            return [`--nohist`];
+        }
+
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'no-histogram' must be boolean.",
+        );
+    }
+
+    private helpLike(flag: string, value: unknown) {
+        if (value == true) {
+            return [flag];
+        }
+
+        if (
+            typeof value === "string" &&
+            (value === "id3" || value === "dev")
+        ) {
+            return [flag, value];
+        }
+
+        if (value === undefined || value === false) {
+            return undefined;
+        }
+
+        throw new Error(
+            `lame: Invalid option: '${flag.slice(2)}' must be boolean or one of 'id3', 'dev'.`,
+        );
+    }
+
     private meta(metaObj: unknown) {
         if (metaObj == null || typeof metaObj !== "object") {
             throw new Error("lame: Invalid option: 'meta' must be an object.");
@@ -587,52 +1089,25 @@ class LameOptions {
 
         const metaRecord = metaObj as Record<string, unknown>;
 
+        const fieldMap: Record<string, string> = {
+            title: "--tt",
+            artist: "--ta",
+            album: "--tl",
+            year: "--ty",
+            comment: "--tc",
+            track: "--tn",
+            genre: "--tg",
+            artwork: "--ti",
+            "genre-list": "--genre-list",
+            "pad-id3v2-size": "--pad-id3v2-size",
+        };
+
         for (const key of Object.keys(metaRecord)) {
             const value = metaRecord[key];
 
-            if (
-                key == "title" ||
-                key == "artist" ||
-                key == "album" ||
-                key == "year" ||
-                key == "comment" ||
-                key == "track" ||
-                key == "genre" ||
-                key == "artwork" ||
-                key == "genre-list" ||
-                key == "pad-id3v2-size"
-            ) {
-                let arg0;
-                if (key == "title") {
-                    arg0 = `--tt`;
-                } else if (key == "artist") {
-                    arg0 = `--ta`;
-                } else if (key == "album") {
-                    arg0 = `--tl`;
-                } else if (key == "year") {
-                    arg0 = `--ty`;
-                } else if (key == "comment") {
-                    arg0 = `--tc`;
-                } else if (key == "track") {
-                    arg0 = `--tn`;
-                } else if (key == "genre") {
-                    arg0 = `--tg`;
-                } else if (key == "artwork") {
-                    arg0 = `--ti`;
-                } else if (key == "genre-list") {
-                    arg0 = `--genre-list`;
-                } else if (key == "pad-id3v2-size") {
-                    arg0 = `--pad-id3v2-size`;
-                } else {
-                    throw new Error(
-                        `lame: Invalid option: 'meta' unknown property '${key}'`,
-                    );
-                }
-
-                const arg1 = `${value}`;
-
-                this.args.push(arg0);
-                this.args.push(arg1);
+            if (key in fieldMap) {
+                this.args.push(fieldMap[key]);
+                this.args.push(`${value}`);
             } else if (
                 key == "add-id3v2" ||
                 key == "id3v1-only" ||
@@ -644,6 +1119,8 @@ class LameOptions {
                 key == "ignore-tag-errors"
             ) {
                 this.args.push(`--${key}`);
+            } else if (key == "custom") {
+                this.appendCustomFrames(value);
             } else {
                 throw new Error(
                     `lame: Invalid option: 'meta' unknown property '${key}'`,
@@ -652,6 +1129,67 @@ class LameOptions {
         }
 
         return undefined;
+    }
+
+    private appendCustomFrames(value: unknown) {
+        if (value == null) {
+            return;
+        }
+
+        const pushFrame = (id: string, frameValue: unknown) => {
+            if (typeof id !== "string" || id.trim() === "") {
+                throw new Error(
+                    "lame: Invalid option: 'meta.custom' frame id must be a non-empty string.",
+                );
+            }
+
+            this.args.push("--tv");
+            this.args.push(`${id}=${String(frameValue)}`);
+        };
+
+        if (Array.isArray(value)) {
+            for (const entry of value) {
+                if (typeof entry === "string") {
+                    const [id, ...rest] = entry.split("=");
+                    if (!id || rest.length === 0) {
+                        throw new Error(
+                            "lame: Invalid option: 'meta.custom' array entries must be 'id=value'.",
+                        );
+                    }
+                    pushFrame(id, rest.join("="));
+                } else if (Array.isArray(entry) && entry.length === 2) {
+                    pushFrame(
+                        String(entry[0]),
+                        entry[1],
+                    );
+                } else if (
+                    typeof entry === "object" &&
+                    entry != null &&
+                    "id" in entry &&
+                    "value" in entry
+                ) {
+                    const typedEntry = entry as { id: string; value: unknown };
+                    pushFrame(typedEntry.id, typedEntry.value);
+                } else {
+                    throw new Error(
+                        "lame: Invalid option: 'meta.custom' array entries must be strings, tuples, or objects with id/value.",
+                    );
+                }
+            }
+            return;
+        }
+
+        if (typeof value === "object") {
+            const record = value as Record<string, unknown>;
+            for (const [id, frameValue] of Object.entries(record)) {
+                pushFrame(id, frameValue);
+            }
+            return;
+        }
+
+        throw new Error(
+            "lame: Invalid option: 'meta.custom' must be an array or object.",
+        );
     }
 }
 
