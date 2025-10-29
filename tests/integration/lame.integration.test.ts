@@ -106,6 +106,35 @@ process.exit(${exitCode});
             expect(encoder.getStatus().finished).toBe(true);
         });
 
+        it("encodes Float32Array inputs by normalizing to PCM", async () => {
+            const workdir = await createWorkdir();
+            const logPath = join(workdir, "encode-float-log.json");
+            process.env.LAME_TEST_LOG = logPath;
+
+            const fakeBinaryPath = await createPassthroughBinary();
+            const encoder = new Lame({
+                output: "buffer",
+                raw: true,
+                bitrate: 128,
+            });
+
+            const samples = new Float32Array([-1, 0, 1]);
+            encoder.setBuffer(samples);
+            encoder.setLamePath(fakeBinaryPath);
+
+            await encoder.encode();
+
+            const argv = await readLoggedArgs(logPath);
+            expect(argv).toEqual(expect.arrayContaining(["-r"]));
+
+            const output = encoder.getBuffer();
+            const expected = Buffer.alloc(6);
+            expected.writeInt16LE(-32768, 0);
+            expected.writeInt16LE(0, 2);
+            expected.writeInt16LE(32767, 4);
+            expect(Buffer.compare(output, expected)).toBe(0);
+        });
+
         it("encodes files to disk with constant bitrate", async () => {
             const workdir = await createWorkdir();
             const logPath = join(workdir, "encode-file-log.json");

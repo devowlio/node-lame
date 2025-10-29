@@ -6,11 +6,22 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 
-import type { LameOptionsBag, LameProgressEmitter, LameStatus } from "../types";
+import type {
+    BitWidth,
+    LameOptionsBag,
+    LameProgressEmitter,
+    LameStatus,
+} from "../types";
 import { resolveLameBinary } from "../internal/binary/resolve-binary";
 import { LameOptions } from "./lame-options";
 
 type ProgressKind = "encode" | "decode";
+
+function isFloatArray(
+    view: ArrayBufferView,
+): view is Float32Array | Float64Array {
+    return view instanceof Float32Array || view instanceof Float64Array;
+}
 
 function parseEncodeProgressLine(content: string): {
     progress?: number;
@@ -105,12 +116,12 @@ class Lame {
         return this;
     }
 
-    public setBuffer(file: Buffer): this {
-        if (!Buffer.isBuffer(file)) {
-            throw new Error("Audio file (buffer) does not exist");
-        }
+    public setBuffer(
+        file: Buffer | ArrayBuffer | ArrayBufferView,
+    ): this {
+        const normalized = this.normalizeInputBuffer(file);
 
-        this.fileBuffer = file;
+        this.fileBuffer = normalized;
         this.filePath = undefined;
 
         return this;
@@ -362,14 +373,236 @@ class Lame {
         });
     }
 
+    private normalizeInputBuffer(
+        input: Buffer | ArrayBuffer | ArrayBufferView,
+    ): Buffer {
+        if (Buffer.isBuffer(input)) {
+            return input;
+        }
+
+        if (input instanceof ArrayBuffer) {
+            return Buffer.from(new Uint8Array(input));
+        }
+
+        if (ArrayBuffer.isView(input)) {
+            return this.convertArrayViewToBuffer(input);
+        }
+
+        throw new Error("Audio file (buffer) does not exist");
+    }
+
+    private convertArrayViewToBuffer(view: ArrayBufferView): Buffer {
+        if (isFloatArray(view)) {
+            return this.convertFloatArrayToBuffer(view);
+        }
+
+        const uintView = new Uint8Array(
+            view.buffer,
+            view.byteOffset,
+            view.byteLength,
+        );
+
+        return Buffer.from(uintView);
+    }
+
+    private convertFloatArrayToBuffer(
+        view: Float32Array | Float64Array,
+    ): Buffer {
+        const bitwidth: BitWidth = this.options.bitwidth ?? 16;
+        const useBigEndian = this.shouldUseBigEndian();
+        const isSigned = this.isSignedForBitwidth(bitwidth);
+
+        switch (bitwidth) {
+            case 8: {
+                const buffer = Buffer.alloc(view.length);
+
+                for (let index = 0; index < view.length; index += 1) {
+                    const sample = view[index];
+
+                    if (isSigned) {
+                        const value = this.scaleToSignedInteger(sample, 8);
+                        buffer.writeInt8(value, index);
+                    } else {
+                        const value = this.scaleToUnsignedInteger(sample, 8);
+                        buffer.writeUInt8(value, index);
+                    }
+                }
+
+                return buffer;
+            }
+
+            case 16: {
+                if (!isSigned) {
+                    throw new Error(
+                        "lame: Float PCM input only supports signed samples for bitwidth 16",
+                    );
+                }
+
+                const buffer = Buffer.alloc(view.length * 2);
+                for (let index = 0; index < view.length; index += 1) {
+                    const value = this.scaleToSignedInteger(view[index], 16);
+                    const offset = index * 2;
+
+                    if (useBigEndian) {
+                        buffer.writeInt16BE(value, offset);
+                    } else {
+                        buffer.writeInt16LE(value, offset);
+                    }
+                }
+
+                return buffer;
+            }
+
+            case 24: {
+                if (!isSigned) {
+                    throw new Error(
+                        "lame: Float PCM input only supports signed samples for bitwidth 24",
+                    );
+                }
+
+                const buffer = Buffer.alloc(view.length * 3);
+                for (let index = 0; index < view.length; index += 1) {
+                    const offset = index * 3;
+                    const scaled = this.scaleToSignedInteger(view[index], 24);
+                    let value = scaled;
+
+                    if (value < 0) {
+                        value += 1 << 24;
+                    }
+
+                    if (useBigEndian) {
+                        buffer[offset] = (value >> 16) & 0xff;
+                        buffer[offset + 1] = (value >> 8) & 0xff;
+                        buffer[offset + 2] = value & 0xff;
+                    } else {
+                        buffer[offset] = value & 0xff;
+                        buffer[offset + 1] = (value >> 8) & 0xff;
+                        buffer[offset + 2] = (value >> 16) & 0xff;
+                    }
+                }
+
+                return buffer;
+            }
+
+            case 32: {
+                if (!isSigned) {
+                    throw new Error(
+                        "lame: Float PCM input only supports signed samples for bitwidth 32",
+                    );
+                }
+
+                const buffer = Buffer.alloc(view.length * 4);
+                for (let index = 0; index < view.length; index += 1) {
+                    const value = this.scaleToSignedInteger(view[index], 32);
+                    const offset = index * 4;
+
+                    if (useBigEndian) {
+                        buffer.writeInt32BE(value, offset);
+                    } else {
+                        buffer.writeInt32LE(value, offset);
+                    }
+                }
+
+                return buffer;
+            }
+        }
+    }
+
+    private shouldUseBigEndian(): boolean {
+        if (this.options["big-endian"] === true) {
+            return true;
+        }
+
+        if (this.options["little-endian"] === true) {
+            return false;
+        }
+
+        return false;
+    }
+
+    private isSignedForBitwidth(bitwidth: BitWidth): boolean {
+        if (bitwidth === 8) {
+            if (this.options.unsigned === true) {
+                return false;
+            }
+
+            return this.options.signed === true;
+        }
+
+        if (this.options.unsigned === true) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private clampSample(value: number): number {
+        if (!Number.isFinite(value)) {
+            return 0;
+        }
+
+        if (value <= -1) {
+            return -1;
+        }
+
+        if (value >= 1) {
+            return 1;
+        }
+
+        return value;
+    }
+
+    private scaleToSignedInteger(value: number, bitwidth: BitWidth): number {
+        const clamped = this.clampSample(value);
+
+        const positiveMax = Math.pow(2, bitwidth - 1) - 1;
+        const negativeScale = Math.pow(2, bitwidth - 1);
+
+        if (clamped <= -1) {
+            return -negativeScale;
+        }
+
+        if (clamped >= 1) {
+            return positiveMax;
+        }
+
+        if (clamped < 0) {
+            const scaled = Math.round(clamped * negativeScale);
+            return Math.max(-negativeScale, scaled);
+        }
+
+        const scaled = Math.round(clamped * positiveMax);
+        return Math.min(positiveMax, scaled);
+    }
+
+    private scaleToUnsignedInteger(value: number, bitwidth: BitWidth): number {
+        const clamped = this.clampSample(value);
+        const normalized = (clamped + 1) / 2;
+        const max = Math.pow(2, bitwidth) - 1;
+        const scaled = Math.round(normalized * max);
+
+        return Math.min(Math.max(scaled, 0), max);
+    }
+
     private async persistInputBufferToTempFile(
         type: ProgressKind,
     ): Promise<string> {
         const tempPath = await this.generateTempFilePath("raw", type);
-        const inputView = Uint8Array.from(this.fileBuffer!);
-        await writeFile(tempPath, inputView);
+        await writeFile(tempPath, this.toUint8Array(this.fileBuffer!));
         this.fileBufferTempFilePath = tempPath;
         return tempPath;
+    }
+
+    private toUint8Array(view: Buffer | ArrayBufferView): Uint8Array {
+        if (view instanceof Buffer) {
+            return new Uint8Array(
+                view.buffer,
+                view.byteOffset,
+                view.byteLength,
+            );
+        }
+
+        return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
     }
 
     private async prepareOutputTarget(type: ProgressKind): Promise<{

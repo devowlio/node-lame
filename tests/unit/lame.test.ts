@@ -20,12 +20,57 @@ vi.mock("node:child_process", () => ({
     spawn: (...args: SpawnArgs) => spawnMock(...args),
 }));
 
+type LameModule = typeof import("../../src/core/lame");
+type LameCtor = LameModule["Lame"];
+
 const {
     Lame,
     parseDecodeProgressLine,
     parseEncodeProgressLine,
     normalizeCliMessage,
 } = await import("../../src/core/lame");
+
+type LameOptionOverrides = Partial<ConstructorParameters<LameCtor>[0]>;
+type SetBufferInput = Parameters<LameCtor["setBuffer"]>[0];
+
+const capturePcmInput = async (
+    options: LameOptionOverrides,
+    input: SetBufferInput,
+) => {
+    let captured: Buffer | undefined;
+
+    spawnBehavior = (proc, args) => {
+        setTimeout(async () => {
+            const [inputPath, outputPath] = args;
+            captured = await fsPromises.readFile(inputPath);
+            await fsPromises.writeFile(
+                outputPath,
+                Uint8Array.from(Buffer.from("encoded")),
+            );
+            proc.stdout.emit(
+                "data",
+                Buffer.from("Writing LAME Tag...done"),
+            );
+            proc.emit("close", 0);
+        }, 5);
+    };
+
+    const encoder = new Lame({
+        output: "buffer",
+        bitrate: 128,
+        raw: true,
+        ...options,
+    });
+
+    encoder.setBuffer(input);
+    await encoder.encode();
+
+    if (!captured) {
+        throw new Error("Expected PCM payload to be captured");
+    }
+
+    return captured;
+};
 
 describe("Lame", () => {
     const tempDirs: string[] = [];
@@ -286,6 +331,199 @@ describe("Lame", () => {
             "Audio file (buffer) does not exist",
         );
     });
+
+    it("accepts Float32Array input and normalizes samples", async () => {
+        const floatSamples = new Float32Array([-1, -0.5, 0, 0.5, 1]);
+        const pcm = await capturePcmInput({ }, floatSamples);
+        expect(pcm.length).toBe(floatSamples.length * 2);
+        expect(pcm.readInt16LE(0)).toBe(-32768);
+        expect(pcm.readInt16LE(2)).toBe(-16384);
+        expect(pcm.readInt16LE(4)).toBe(0);
+        expect(pcm.readInt16LE(6)).toBe(16384);
+        expect(pcm.readInt16LE(8)).toBe(32767);
+    });
+
+    it("converts Float32Array to signed 8-bit PCM", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 8, signed: true },
+            new Float32Array([-1, -0.5, 0, 0.5, 1]),
+        );
+
+        expect(pcm.length).toBe(5);
+        expect(pcm.readInt8(0)).toBe(-128);
+        expect(pcm.readInt8(1)).toBe(-64);
+        expect(pcm.readInt8(2)).toBe(0);
+        expect(pcm.readInt8(3)).toBe(64);
+        expect(pcm.readInt8(4)).toBe(127);
+    });
+
+    it("converts Float32Array to unsigned 8-bit PCM and clamps extremes", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 8, unsigned: true },
+            new Float32Array([-2, -1, -0.25, 0, 0.25, 1, 3, Number.NaN]),
+        );
+
+        expect([...pcm]).toEqual([0, 0, 96, 128, 159, 255, 255, 128]);
+    });
+
+    it("converts Float32Array to big-endian 16-bit PCM", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 16, signed: true, "big-endian": true },
+            new Float32Array([-2, -0.25, 0, 0.25, 2, Infinity]),
+        );
+
+        expect(pcm.length).toBe(12);
+        expect(pcm.readInt16BE(0)).toBe(-32768);
+        expect(pcm.readInt16BE(2)).toBe(-8192);
+        expect(pcm.readInt16BE(4)).toBe(0);
+        expect(pcm.readInt16BE(6)).toBe(8192);
+        expect(pcm.readInt16BE(8)).toBe(32767);
+        expect(pcm.readInt16BE(10)).toBe(0);
+    });
+
+    it("converts Float32Array to 24-bit little-endian PCM", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 24, signed: true, "little-endian": true },
+            new Float32Array([-1, 0.5]),
+        );
+
+        expect(pcm.length).toBe(6);
+        expect(pcm[0]).toBe(0x00);
+        expect(pcm[1]).toBe(0x00);
+        expect(pcm[2]).toBe(0x80);
+        expect(pcm[3]).toBe(0x00);
+        expect(pcm[4]).toBe(0x00);
+        expect(pcm[5]).toBe(0x40);
+    });
+
+    it("converts Float32Array to 24-bit big-endian PCM", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 24, signed: true, "big-endian": true },
+            new Float32Array([-1, 0.5]),
+        );
+
+        expect(pcm.length).toBe(6);
+        expect(pcm[0]).toBe(0x80);
+        expect(pcm[1]).toBe(0x00);
+        expect(pcm[2]).toBe(0x00);
+        expect(pcm[3]).toBe(0x40);
+        expect(pcm[4]).toBe(0x00);
+        expect(pcm[5]).toBe(0x00);
+    });
+
+    it("converts Float32Array to 32-bit big-endian PCM", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 32, signed: true, "big-endian": true },
+            new Float32Array([-1, 0.5, 1]),
+        );
+
+        expect(pcm.length).toBe(12);
+        expect(pcm.readInt32BE(0)).toBe(-2147483648);
+        expect(pcm.readInt32BE(4)).toBe(1073741824);
+        expect(pcm.readInt32BE(8)).toBe(2147483647);
+    });
+
+    it("converts Float32Array to 32-bit little-endian PCM", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 32, signed: true, "little-endian": true },
+            new Float32Array([-1, 0.5, 1]),
+        );
+
+        expect(pcm.length).toBe(12);
+        expect(pcm.readInt32LE(0)).toBe(-2147483648);
+        expect(pcm.readInt32LE(4)).toBe(1073741824);
+        expect(pcm.readInt32LE(8)).toBe(2147483647);
+    });
+
+    it("preserves non-float typed array PCM input", async () => {
+        const pcm = await capturePcmInput(
+            { bitwidth: 16, signed: true, "little-endian": true },
+            new Uint16Array([0x0000, 0x7fff]),
+        );
+
+        expect(pcm.length).toBe(4);
+        expect(pcm.readUInt16LE(0)).toBe(0x0000);
+        expect(pcm.readUInt16LE(2)).toBe(0x7fff);
+    });
+
+    it("throws when converting float input with unsigned wide bitwidth", () => {
+        const encoder = new Lame({
+            output: "buffer",
+            bitrate: 128,
+            raw: true,
+            bitwidth: 16,
+            unsigned: true,
+        });
+
+        expect(() => encoder.setBuffer(new Float32Array([0]))).toThrow(
+            "lame: Float PCM input only supports signed samples for bitwidth 16",
+        );
+    });
+
+    it("converts ArrayBuffer input into buffer", async () => {
+        const arrayBuffer = new Uint8Array([1, 2, 3, 4]).buffer;
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+
+        encoder.setBuffer(arrayBuffer);
+        spawnBehavior = (proc, args) => {
+            setTimeout(async () => {
+                await fsPromises.writeFile(
+                    args[1],
+                    Uint8Array.from(Buffer.from("encoded")),
+                );
+                proc.stdout.emit(
+                    "data",
+                    Buffer.from("Writing LAME Tag...done"),
+                );
+                proc.emit("close", 0);
+            }, 5);
+        };
+
+        await encoder.encode();
+        expect(encoder.getStatus().finished).toBe(true);
+    });
+
+    it("exposes toUint8Array conversions for non-Buffer views", () => {
+        const encoder = new Lame({ output: "buffer", bitrate: 128 });
+        const toUint8Array = (encoder as unknown as {
+            toUint8Array(view: DataView): Uint8Array;
+        }).toUint8Array;
+
+        const buffer = new ArrayBuffer(4);
+        const view = new DataView(buffer);
+        view.setUint32(0, 0x12345678);
+
+        expect([...toUint8Array(view)]).toEqual([...new Uint8Array(buffer)]);
+    });
+
+    it("throws when converting float input to 24-bit unsigned PCM", () => {
+        const encoder = new Lame({
+            output: "buffer",
+            bitrate: 128,
+            raw: true,
+            bitwidth: 24,
+            unsigned: true,
+        });
+
+        expect(() => encoder.setBuffer(new Float32Array([0]))).toThrow(
+            "lame: Float PCM input only supports signed samples for bitwidth 24",
+        );
+    });
+
+    it("throws when converting float input to 32-bit unsigned PCM", () => {
+        const encoder = new Lame({
+            output: "buffer",
+            bitrate: 128,
+            raw: true,
+            bitwidth: 32,
+            unsigned: true,
+        });
+
+        expect(() => encoder.setBuffer(new Float32Array([0]))).toThrow(
+            "lame: Float PCM input only supports signed samples for bitwidth 32",
+        );
+    });
+
 
     it("validates LAME path and temp path setters", async () => {
         const encoder = new Lame({ output: "buffer", bitrate: 128 });
