@@ -1,36 +1,67 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import type { Platform } from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 declare const __dirname: string | undefined;
 declare const __filename: string | undefined;
 
-const moduleUrl = (() => {
-    try {
-        const meta = import.meta as { url?: string };
-        if (meta && typeof meta.url === "string") {
-            return meta.url;
-        }
-    } catch {
-        // Swallow ReferenceError when import.meta is unavailable (CommonJS build).
+type ImportMetaLike = { url?: string } | undefined;
+
+function deriveModuleUrl(
+    meta: ImportMetaLike,
+    filename: string | undefined,
+): string | undefined {
+    if (meta && typeof meta.url === "string") {
+        return meta.url;
     }
 
-    if (typeof __filename === "string") {
-        return pathToFileURL(__filename).href;
+    if (typeof filename === "string") {
+        return pathToFileURL(filename).href;
     }
 
     return undefined;
+}
+
+const moduleUrl = (() => {
+    let meta: ImportMetaLike = undefined;
+
+    try {
+        meta = import.meta as ImportMetaLike;
+    } catch {
+        // ignore when import.meta is unavailable (CommonJS build)
+    }
+
+    const resolvedFilename = __filename;
+
+    return deriveModuleUrl(meta, resolvedFilename);
 })();
 
-const PACKAGE_ROOT =
-    typeof __dirname === "string"
-        ? join(__dirname, "..", "..", "..")
-        : moduleUrl != null
-          ? fileURLToPath(new URL("../../..", moduleUrl))
-          : process.cwd();
+function resolvePackageRoot(
+    moduleHref: string | undefined,
+    dirname: string | undefined,
+): string {
+    if (dirname) {
+        return join(dirname, "..", "..", "..");
+    }
+
+    if (moduleHref != null) {
+        return fileURLToPath(new URL("../../..", moduleHref));
+    }
+
+    return process.cwd();
+}
+
+const PACKAGE_ROOT = resolvePackageRoot(moduleUrl, __dirname);
 const CUSTOM_BINARY_ENV = "LAME_BINARY";
 
-const PLATFORM_EXECUTABLE_SUFFIX = process.platform === "win32" ? ".exe" : "";
+function getPlatformExecutableSuffix(platform: Platform): string {
+    return platform === "win32" ? ".exe" : "";
+}
+
+const PLATFORM_EXECUTABLE_SUFFIX = getPlatformExecutableSuffix(
+    process.platform,
+);
 
 /**
  * Attempt to resolve the absolute path to a bundled LAME binary.
@@ -68,4 +99,10 @@ function resolveLameBinary(): string {
     return resolved ?? "lame";
 }
 
-export { resolveBundledLameBinary, resolveLameBinary };
+export {
+    deriveModuleUrl,
+    getPlatformExecutableSuffix,
+    resolveBundledLameBinary,
+    resolveLameBinary,
+    resolvePackageRoot,
+};
