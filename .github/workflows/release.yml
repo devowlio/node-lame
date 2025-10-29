@@ -10,7 +10,8 @@ jobs:
     build-binaries:
         if: >
             github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.head_branch == 'master'
+            github.event.workflow_run.head_branch == 'master' &&
+            startsWith(github.event.workflow_run.head_commit.message, 'chore(release)')
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
@@ -31,6 +32,7 @@ jobs:
               with:
                   repository: ${{ github.event.workflow_run.head_repository.full_name }}
                   ref: ${{ github.event.workflow_run.head_commit.id }}
+                  fetch-depth: 0
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v4
@@ -66,7 +68,8 @@ jobs:
         needs: build-binaries
         if: >
             github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.head_branch == 'master'
+            github.event.workflow_run.head_branch == 'master' &&
+            startsWith(github.event.workflow_run.head_commit.message, 'chore(release)')
         runs-on: ubuntu-latest
         permissions:
             contents: write
@@ -77,6 +80,7 @@ jobs:
               with:
                   repository: ${{ github.event.workflow_run.head_repository.full_name }}
                   ref: ${{ github.event.workflow_run.head_commit.id }}
+                  fetch-depth: 0
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v4
@@ -102,7 +106,38 @@ jobs:
             - name: Build package
               run: pnpm run build
 
-            - name: Publish to npm
+            - name: Prepare release assets
+              run: |
+                  set -eo pipefail
+                  VERSION=$(node -p "require('./package.json').version")
+                  ASSET_DIR="$PWD/release-assets"
+                  mkdir -p "$ASSET_DIR"
+                  while IFS= read -r manifest; do
+                      base=$(basename "$manifest" .json)
+                      src_dir="vendor/lame/$base"
+                      if [ ! -d "$src_dir" ]; then
+                          echo "Skipping $base - no vendor directory"
+                          continue
+                      fi
+                      tmp_dir=$(mktemp -d)
+                      cp "$src_dir"/* "$tmp_dir/"
+                      cp "$manifest" "$tmp_dir/manifest.json"
+                      (cd "$tmp_dir" && zip -qr "$ASSET_DIR/node-lame-v${VERSION}-${base}.zip" .)
+                      rm -rf "$tmp_dir"
+                  done < <(find artifacts -maxdepth 3 -name '*.json')
+                  zip -qr "$ASSET_DIR/node-lame-v${VERSION}-dist.zip" dist
+
+            - name: Publish release
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              run: pnpm publish --access public
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: pnpm run release:publish
+
+            - name: Upload assets to GitHub release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  TAG="v${VERSION}"
+                  gh release upload "$TAG" release-assets/*.zip --clobber
