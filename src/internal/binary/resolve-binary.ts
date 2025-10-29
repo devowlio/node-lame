@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Platform } from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 declare const __dirname: string | undefined;
@@ -55,7 +54,7 @@ function resolvePackageRoot(
 const PACKAGE_ROOT = resolvePackageRoot(moduleUrl, __dirname);
 const CUSTOM_BINARY_ENV = "LAME_BINARY";
 
-function getPlatformExecutableSuffix(platform: Platform): string {
+function getPlatformExecutableSuffix(platform: typeof process.platform): string {
     return platform === "win32" ? ".exe" : "";
 }
 
