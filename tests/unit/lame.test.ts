@@ -4,7 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
+type WritableMock = EventEmitter & {
+    destroyed: boolean;
+    write: ReturnType<typeof vi.fn>;
+    end: ReturnType<typeof vi.fn>;
+};
+
 type MockChildProcess = EventEmitter & {
+    stdin: WritableMock;
     stdout: EventEmitter;
     stderr: EventEmitter;
     kill: ReturnType<typeof vi.fn>;
@@ -15,6 +22,10 @@ const spawnMock = vi.fn();
 type SpawnArgs = [command: string, args: string[]];
 
 let spawnBehavior: ((proc: MockChildProcess, args: string[]) => void) | null;
+
+const writeFileBuffer = (path: string, content: Buffer) => {
+    return fsPromises.writeFile(path, Uint8Array.from(content));
+};
 
 vi.mock("node:child_process", () => ({
     spawn: (...args: SpawnArgs) => spawnMock(...args),
@@ -30,8 +41,9 @@ const {
     normalizeCliMessage,
 } = await import("../../src/core/lame");
 
+type LameInstance = InstanceType<LameCtor>;
 type LameOptionOverrides = Partial<ConstructorParameters<LameCtor>[0]>;
-type SetBufferInput = Parameters<LameCtor["setBuffer"]>[0];
+type SetBufferInput = Parameters<LameInstance["setBuffer"]>[0];
 
 const capturePcmInput = async (
     options: LameOptionOverrides,
@@ -43,10 +55,7 @@ const capturePcmInput = async (
         setTimeout(async () => {
             const [inputPath, outputPath] = args;
             captured = await fsPromises.readFile(inputPath);
-            await fsPromises.writeFile(
-                outputPath,
-                Uint8Array.from(Buffer.from("encoded")),
-            );
+            await writeFileBuffer(outputPath, Buffer.from("encoded"));
             proc.stdout.emit(
                 "data",
                 Buffer.from("Writing LAME Tag...done"),
@@ -81,11 +90,7 @@ describe("Lame", () => {
             setTimeout(() => {
                 const outputPath = args[1];
                 if (outputPath) {
-                    fsPromises
-                        .writeFile(
-                            outputPath,
-                            Uint8Array.from(Buffer.from("encoded")),
-                        )
+                    writeFileBuffer(outputPath, Buffer.from("encoded"))
                         .then(() => {
                             proc.stdout.emit(
                                 "data",
@@ -104,6 +109,13 @@ describe("Lame", () => {
 
         spawnMock.mockImplementation((command: string, args: string[]) => {
             const process = new EventEmitter() as MockChildProcess;
+            const stdin = new EventEmitter() as WritableMock;
+            stdin.destroyed = false;
+            stdin.write = vi.fn(() => true);
+            stdin.end = vi.fn(() => {
+                stdin.destroyed = true;
+            });
+            process.stdin = stdin;
             process.stdout = new EventEmitter();
             process.stderr = new EventEmitter();
             process.kill = vi.fn();
@@ -133,7 +145,7 @@ describe("Lame", () => {
     const createTempFile = async (content: Buffer) => {
         const dir = await createTempDir();
         const file = join(dir, "input.raw");
-        await fsPromises.writeFile(file, content);
+        await writeFileBuffer(file, content);
         return file;
     };
 
@@ -146,6 +158,17 @@ describe("Lame", () => {
         expect(spawnMock).toHaveBeenCalled();
         expect(encoder.getBuffer()).toBeInstanceOf(Buffer);
         expect(encoder.getStatus().finished).toBe(true);
+    });
+
+    it("rejects stream output mode in the Lame class", () => {
+        expect(
+            () =>
+                new Lame({
+                    output: "stream",
+                } as unknown as any),
+        ).toThrow(
+            "lame: The streaming output mode requires createLameEncoderStream or createLameDecoderStream",
+        );
     });
 
     it("honours custom disptime option", async () => {
@@ -189,10 +212,7 @@ describe("Lame", () => {
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("encoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("encoded"));
                 process.stdout.emit(
                     "data",
                     Buffer.from("Writing LAME Tag...done"),
@@ -217,10 +237,7 @@ describe("Lame", () => {
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("decoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("decoded"));
                 process.stderr.emit("data", Buffer.from("Frame 1/10"));
                 process.stderr.emit("data", Buffer.from("Frame 10/10"));
                 process.emit("close", 0);
@@ -240,18 +257,15 @@ describe("Lame", () => {
         const encoder = new Lame({ output: "buffer", bitrate: 128 });
         encoder.setBuffer(Buffer.from("input"));
 
-        const statuses: Array<[number, string | undefined]> = [];
-        encoder
-            .getEmitter()
-            .on("progress", (payload) => statuses.push(payload));
+        const statuses: Array<[number, string?]> = [];
+        encoder.getEmitter().on("progress", (payload) => {
+            statuses.push([payload[0], payload[1]]);
+        });
 
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("encoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("encoded"));
                 process.stderr.emit(
                     "data",
                     Buffer.from("Frame (50%)| 00:20 remaining"),
@@ -283,10 +297,7 @@ describe("Lame", () => {
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("encoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("encoded"));
                 process.stderr.emit(
                     "data",
                     Buffer.from("Frame (60%)| 00:20 "),
@@ -467,10 +478,7 @@ describe("Lame", () => {
         encoder.setBuffer(arrayBuffer);
         spawnBehavior = (proc, args) => {
             setTimeout(async () => {
-                await fsPromises.writeFile(
-                    args[1],
-                    Uint8Array.from(Buffer.from("encoded")),
-                );
+                await writeFileBuffer(args[1], Buffer.from("encoded"));
                 proc.stdout.emit(
                     "data",
                     Buffer.from("Writing LAME Tag...done"),
@@ -634,10 +642,7 @@ describe("Lame", () => {
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("file-encoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("file-encoded"));
                 process.emit("close", 0);
             }, 5);
         };
@@ -702,14 +707,11 @@ describe("Lame", () => {
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 process.stdout.emit("data", Buffer.from("ok"));
+                const outputPath = args[1];
+                await writeFileBuffer(outputPath, Buffer.from("encoded"));
                 process.stdout.emit(
                     "data",
                     Buffer.from("Writing LAME Tag...done"),
-                );
-                const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("encoded")),
                 );
                 process.emit("close", 0);
             }, 5);
@@ -724,16 +726,15 @@ describe("Lame", () => {
         const encoder = new Lame({ output: "buffer", bitrate: 128 });
         encoder.setFile(inputPath);
 
-        const observed: Array<[number, string | undefined]> = [];
-        encoder.getEmitter().on("progress", (payload) => observed.push(payload));
+        const observed: Array<[number, string?]> = [];
+        encoder.getEmitter().on("progress", (payload) => {
+            observed.push([payload[0], payload[1]]);
+        });
 
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("decoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("decoded"));
                 process.stderr.emit("data", Buffer.from("Frame 0/0"));
                 process.stderr.emit("data", Buffer.from("Frame 2/2"));
                 process.emit("close", 0);
@@ -756,6 +757,13 @@ describe("Lame", () => {
 
         spawnMock.mockImplementation((_, args) => {
             const process = new EventEmitter() as MockChildProcess;
+            const stdin = new EventEmitter() as WritableMock;
+            stdin.destroyed = false;
+            stdin.write = vi.fn(() => true);
+            stdin.end = vi.fn(() => {
+                stdin.destroyed = true;
+            });
+            process.stdin = stdin;
             process.stdout = new EventEmitter();
             process.stderr = new EventEmitter();
             process.kill = vi.fn();
@@ -775,10 +783,7 @@ describe("Lame", () => {
 
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("encoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("encoded"));
                 stdoutListener?.(Buffer.from("Frame (42%)| 01:23 "));
                 stdoutListener?.(Buffer.from("Writing LAME Tag...done"));
                 process.emit("close", 0);
@@ -806,6 +811,13 @@ describe("Lame", () => {
 
         spawnMock.mockImplementation((_, args) => {
             const process = new EventEmitter() as MockChildProcess;
+            const stdin = new EventEmitter() as WritableMock;
+            stdin.destroyed = false;
+            stdin.write = vi.fn(() => true);
+            stdin.end = vi.fn(() => {
+                stdin.destroyed = true;
+            });
+            process.stdin = stdin;
             process.stdout = new EventEmitter();
             process.stderr = new EventEmitter();
             process.kill = vi.fn();
@@ -825,10 +837,7 @@ describe("Lame", () => {
 
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("decoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("decoded"));
                 stderrListener?.(Buffer.from("Frame 3/5"));
                 process.emit("close", 0);
             }, 5);
@@ -849,10 +858,7 @@ describe("Lame", () => {
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("decoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("decoded"));
                 process.stderr.emit("data", Buffer.from("Some random text"));
                 process.emit("close", 0);
             }, 5);
@@ -872,10 +878,7 @@ describe("Lame", () => {
         spawnBehavior = (process, args) => {
             setTimeout(async () => {
                 const outputPath = args[1];
-                await fsPromises.writeFile(
-                    outputPath,
-                    Uint8Array.from(Buffer.from("encoded")),
-                );
+                await writeFileBuffer(outputPath, Buffer.from("encoded"));
                 process.stderr.emit("data", Buffer.from("Warning: clipped"));
                 process.stderr.emit("data", Buffer.from("Error loading table"));
                 process.stderr.emit("data", Buffer.from("lame: fatal"));
@@ -943,8 +946,8 @@ describe("Lame", () => {
         const temp = await createTempDir();
         const fileTemp = join(temp, "buffer.raw");
         const encodedTemp = join(temp, "encoded.mp3");
-        await fsPromises.writeFile(fileTemp, Buffer.from("rawdata"));
-        await fsPromises.writeFile(encodedTemp, Buffer.from("encoded"));
+        await writeFileBuffer(fileTemp, Buffer.from("rawdata"));
+        await writeFileBuffer(encodedTemp, Buffer.from("encoded"));
 
         Object.assign(encoder as unknown as Record<string, unknown>, {
             fileBufferTempFilePath: fileTemp,
