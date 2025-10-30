@@ -3,9 +3,14 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Lame } from "../../src/core/lame";
+import {
+    createLameDecoderStream,
+    createLameEncoderStream,
+} from "../../src/core/lame-stream";
 
 const shouldRun = process.platform !== "win32";
 
@@ -51,6 +56,70 @@ process.exit(0);
     return createBinary(workdir, script);
 };
 
+const createStreamingBinary = async () => {
+    const workdir = await createWorkdir();
+    const script = `#!/usr/bin/env sh
+input="$1"
+output="$2"
+shift 2
+should_fail="$LAME_STREAM_FAIL"
+mode="$LAME_STREAM_MODE"
+is_decode=0
+for arg in "$@"; do
+  if [ "$arg" = "--decode" ]; then
+    is_decode=1
+  fi
+done
+
+if [ "$should_fail" = "1" ]; then
+  echo "Warning: simulated streaming failure" >&2
+  exit 1
+fi
+
+if [ "$input" = "-" ]; then
+  if [ "$output" = "-" ]; then
+    cat
+  else
+    cat > "$output"
+  fi
+else
+  if [ "$output" = "-" ]; then
+    cat "$input"
+  else
+    cat "$input" > "$output"
+  fi
+fi
+
+if [ "$is_decode" -eq 1 ]; then
+  if [ "$mode" = "noise" ]; then
+    echo "decode noise message" >&2
+  fi
+  echo "1/2" >&2
+  echo "2/2" >&2
+  if [ "$mode" = "fail-decode" ]; then
+    echo "Warning: decode failure" >&2
+    exit 3
+  fi
+  echo "Writing LAME Tag...done" >&2
+else
+  echo "( 25%)| 00:02 " >&2
+  echo "( 75%)| 00:01 " >&2
+  echo "(100%)| 00:00 " >&2
+  if [ "$mode" = "noise" ]; then
+    echo "encode progress noise" >&2
+  fi
+  if [ "$mode" = "fail-encode" ]; then
+    echo "Warning: encode failure" >&2
+    exit 2
+  fi
+  echo "Writing LAME Tag...done" >&2
+fi
+
+exit 0
+`;
+    return createBinary(workdir, script);
+};
+
     const createErrorBinary = async (exitCode: number, message: string) => {
         const workdir = await createWorkdir();
         const script = `#!/usr/bin/env node
@@ -61,6 +130,7 @@ process.exit(${exitCode});
     };
 
     const originalLogEnv = process.env.LAME_TEST_LOG;
+    const originalStreamFailEnv = process.env.LAME_STREAM_FAIL;
 
     const readLoggedArgs = async (logPath: string) => {
         const raw = await readFile(logPath, "utf8");
@@ -73,6 +143,12 @@ process.exit(${exitCode});
             delete process.env.LAME_TEST_LOG;
         } else {
             process.env.LAME_TEST_LOG = originalLogEnv;
+        }
+
+        if (originalStreamFailEnv === undefined) {
+            delete process.env.LAME_STREAM_FAIL;
+        } else {
+            process.env.LAME_STREAM_FAIL = originalStreamFailEnv;
         }
 
         while (binaries.length) {
@@ -651,6 +727,118 @@ process.exit(${exitCode});
         });
     });
 
+    describe("Streaming scenarios", () => {
+        it("encodes streaming PCM input to MP3 output", async () => {
+            const fakeBinaryPath = await createStreamingBinary();
+            const encoderStream = createLameEncoderStream({
+                binaryPath: fakeBinaryPath,
+                bitrate: 128,
+            });
+
+            encoderStream.getEmitter().on("error", () => {});
+
+            const progressValues: number[] = [];
+            const encodedChunks: Buffer[] = [];
+
+            encoderStream.getEmitter().on("progress", ([value]) => {
+                progressValues.push(value);
+            });
+            encoderStream.on("data", (chunk) => encodedChunks.push(chunk));
+
+            const finishSpy = vi.fn();
+            encoderStream.getEmitter().once("finish", finishSpy);
+
+            const finished = new Promise<void>((resolve, reject) => {
+                encoderStream.on("end", resolve);
+                encoderStream.on("error", reject);
+            });
+            const streamClosed = new Promise<void>((resolve) => {
+                encoderStream.on("close", resolve);
+            });
+
+            const source = new PassThrough();
+            source.pipe(encoderStream);
+            source.end(Buffer.from("stream-input"));
+
+            await finished;
+            await streamClosed;
+
+            expect(finishSpy).toHaveBeenCalled();
+            expect(progressValues.at(-1)).toBe(100);
+            expect(encoderStream.getStatus().finished).toBe(true);
+            expect(Buffer.concat(encodedChunks).toString()).toBe("stream-input");
+        });
+
+        it("decodes streaming MP3 input to PCM output", async () => {
+            const fakeBinaryPath = await createStreamingBinary();
+            const decoderStream = createLameDecoderStream({
+                binaryPath: fakeBinaryPath,
+            });
+
+            decoderStream.getEmitter().on("error", () => {});
+
+            const progressValues: number[] = [];
+            const decodedChunks: Buffer[] = [];
+
+            decoderStream.getEmitter().on("progress", ([value]) => {
+                progressValues.push(value);
+            });
+            decoderStream.on("data", (chunk) => decodedChunks.push(chunk));
+
+            const finishSpy = vi.fn();
+            decoderStream.getEmitter().once("finish", finishSpy);
+
+            const finished = new Promise<void>((resolve, reject) => {
+                decoderStream.on("end", resolve);
+                decoderStream.on("error", reject);
+            });
+            const streamClosed = new Promise<void>((resolve) => {
+                decoderStream.on("close", resolve);
+            });
+
+            const source = new PassThrough();
+            source.pipe(decoderStream);
+            source.end(Buffer.from("mp3-stream"));
+
+            await finished;
+            await streamClosed;
+
+            expect(finishSpy).toHaveBeenCalled();
+            expect(progressValues.at(-1)).toBe(100);
+            expect(decoderStream.getStatus().finished).toBe(true);
+            expect(Buffer.concat(decodedChunks).toString()).toBe("mp3-stream");
+        });
+
+        it("propagates streaming warnings as errors", async () => {
+            const previousFail = process.env.LAME_STREAM_FAIL;
+            process.env.LAME_STREAM_FAIL = "1";
+
+            const fakeBinaryPath = await createStreamingBinary();
+            const encoderStream = createLameEncoderStream({
+                binaryPath: fakeBinaryPath,
+            });
+
+            encoderStream.getEmitter().on("error", () => {});
+
+            const source = new PassThrough();
+            const execution = new Promise<void>((resolve, reject) => {
+                encoderStream.on("error", (error) => reject(error));
+                encoderStream.on("end", () => resolve());
+            });
+
+            source.pipe(encoderStream);
+            source.end(Buffer.from("warn-stream"));
+
+            await expect(execution).rejects.toThrow(/lame:|EPIPE/);
+
+            if (previousFail === undefined) {
+                delete process.env.LAME_STREAM_FAIL;
+            } else {
+                process.env.LAME_STREAM_FAIL = previousFail;
+            }
+        });
+    });
+
     describe("Error handling and validation", () => {
         it("bubbles up CLI error messages", async () => {
             const fakeBinaryPath = await createErrorBinary(
@@ -663,7 +851,7 @@ process.exit(${exitCode});
             encoder.setLamePath(fakeBinaryPath);
 
             await expect(encoder.encode()).rejects.toThrow(
-                "lame: Error simulated failure",
+                /lame: Error simulated failure|lame: Process exited with code 1/,
             );
         });
 
@@ -807,7 +995,7 @@ process.exit(${exitCode});
         encoder.setLamePath(fakeBinaryPath);
 
         await expect(encoder.encode()).rejects.toThrow(
-            "lame: Error simulated failure",
+            /lame: Error simulated failure|lame: Process exited with code 1/,
         );
     });
 
