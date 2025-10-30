@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { LameOptions } from "../../src/core/lame-options";
-import type { LameOptionsBag } from "../../src/types";
+import type {
+    BitRate,
+    BitWidth,
+    ChannelMode,
+    LameOptionsBag,
+    NoAsm,
+    PriorityLevel,
+} from "../../src/types";
 
 const buildOptions = (overrides: Partial<LameOptionsBag>) =>
     new LameOptions({
@@ -360,14 +367,18 @@ describe("LameOptions", () => {
     it.each([8, 16, 24, 32])(
         "accepts supported bitwidth %s",
         (bitwidthValue) => {
-            expect(() => buildOptions({ bitwidth: bitwidthValue })).not.toThrow();
+            expect(() =>
+                buildOptions({ bitwidth: bitwidthValue as BitWidth }),
+            ).not.toThrow();
         },
     );
 
     it.each(["s", "j", "f", "d", "m", "l", "r", "a"])(
         "accepts valid mode %s",
         (modeValue) => {
-            expect(() => buildOptions({ mode: modeValue })).not.toThrow();
+            expect(() =>
+                buildOptions({ mode: modeValue as ChannelMode }),
+            ).not.toThrow();
         },
     );
 
@@ -402,24 +413,26 @@ describe("LameOptions", () => {
     });
 
     it.each(["mmx", "3dnow", "sse"])("accepts noasm %s", (value) => {
-        expect(() => buildOptions({ noasm: value })).not.toThrow();
+        expect(() => buildOptions({ noasm: value as NoAsm })).not.toThrow();
     });
 
     it.each([8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320])(
         "accepts bitrate %s",
         (bitrateValue) => {
-            expect(() => buildOptions({ bitrate: bitrateValue })).not.toThrow();
+            expect(() =>
+                buildOptions({ bitrate: bitrateValue as BitRate }),
+            ).not.toThrow();
         },
     );
 
     it("throws for invalid bitwidth values", () => {
-        expect(() => buildOptions({ bitwidth: 12 as unknown as number })).toThrow(
+        expect(() => buildOptions({ bitwidth: 12 as unknown as BitWidth })).toThrow(
             "lame: Invalid option: 'sfreq' is not in range of 8, 16, 24 or 32.",
         );
     });
 
     it("throws for invalid mode values", () => {
-        expect(() => buildOptions({ mode: "x" as unknown as string })).toThrow(
+        expect(() => buildOptions({ mode: "x" as unknown as ChannelMode })).toThrow(
             "lame: Invalid option: 'mode' is not in range of 's', 'j', 'f', 'd', 'm', 'l', 'r' or 'a'.",
         );
     });
@@ -484,13 +497,13 @@ describe("LameOptions", () => {
     });
 
     it("throws for invalid noasm values", () => {
-        expect(() => buildOptions({ noasm: "avx" as unknown as string })).toThrow(
+        expect(() => buildOptions({ noasm: "avx" as unknown as NoAsm })).toThrow(
             "lame: Invalid option: 'noasm' is not in range of 'mmx', '3dnow' or 'sse'.",
         );
     });
 
     it("throws for invalid bitrate values", () => {
-        expect(() => buildOptions({ bitrate: 999 })).toThrow(
+        expect(() => buildOptions({ bitrate: 999 as unknown as BitRate })).toThrow(
             "lame: Invalid option: 'bitrate' is not in range of 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256 or 320.",
         );
     });
@@ -514,7 +527,7 @@ describe("LameOptions", () => {
     });
 
     it("throws when priority is outside the supported range", () => {
-        expect(() => buildOptions({ priority: 7 as unknown as number })).toThrow(
+        expect(() => buildOptions({ priority: 7 as unknown as PriorityLevel })).toThrow(
             "lame: Invalid option: 'priority' must be an integer between 0 and 4.",
         );
     });

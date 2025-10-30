@@ -14,7 +14,7 @@ interface LameStatus {
  * Structured option bag accepted by the encoder.
  */
 interface LameOptionsBag {
-    output: string | "buffer";
+    output: string | "buffer" | "stream";
     raw?: boolean;
     "swap-bytes"?: boolean;
     "swap-channel"?: boolean;
@@ -86,6 +86,10 @@ interface LameOptionsBag {
     meta?: MetaOptions;
 }
 
+type LameStreamOptions = Omit<LameOptionsBag, "output"> & {
+    output?: "stream";
+};
+
 type SampleFrequency = 8 | 11.025 | 12 | 16 | 22.05 | 24 | 32 | 44.1 | 48;
 
 type BitWidth = 8 | 16 | 24 | 32;
@@ -146,6 +150,7 @@ interface MetaOptions {
     "id3v2-latin1"?: boolean;
     "id3v2-utf16"?: boolean;
     "space-id3v1"?: boolean;
+    "pad-id3v2"?: boolean;
     "pad-id3v2-size"?: number;
     "genre-list"?: string;
     "ignore-tag-errors"?: boolean;
@@ -180,4 +185,5 @@ export type {
     SampleFrequency,
     HelpTopic,
     CustomFrameRecord,
+    LameStreamOptions,
 };

@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync } from "node:fs";
@@ -6,16 +5,15 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 
-import type {
-    BitWidth,
-    LameOptionsBag,
-    LameProgressEmitter,
-    LameStatus,
-} from "../types";
+import type { BitWidth, LameOptionsBag, LameProgressEmitter, LameStatus } from "../types";
 import { resolveLameBinary } from "../internal/binary/resolve-binary";
 import { LameOptions } from "./lame-options";
-
-type ProgressKind = "encode" | "decode";
+import {
+    buildLameSpawnArgs,
+    createInitialStatus,
+    spawnLameProcess,
+} from "./lame-process";
+import type { ProgressKind } from "./lame-process";
 
 function isFloatArray(
     view: ArrayBufferView,
@@ -23,68 +21,18 @@ function isFloatArray(
     return view instanceof Float32Array || view instanceof Float64Array;
 }
 
-function parseEncodeProgressLine(content: string): {
-    progress?: number;
-    eta?: string;
-} | null {
-    const progressMatch = content.match(/\((( [0-9])|([0-9]{2})|(100))%\)\|/);
-    if (!progressMatch) {
-        return null;
-    }
-
-    const etaMatch = content.match(/[0-9]{1,2}:[0-9][0-9] /);
-
-    /* c8 ignore next */
-    const progress = Number(progressMatch[1]);
-    const eta = etaMatch ? etaMatch[0].trim() : undefined;
-
-    return { progress, eta };
-}
-
-function parseDecodeProgressLine(content: string): number | null {
-    const progressMatch = content.match(/[0-9]{1,10}\/[0-9]{1,10}/);
-    if (!progressMatch) {
-        return null;
-    }
-
-    const [current, total] = progressMatch[0].split("/").map(Number);
-    if (!Number.isFinite(current) || !Number.isFinite(total) || total === 0) {
-        return NaN;
-    }
-
-    return Math.floor((current / total) * 100);
-}
-
-function normalizeCliMessage(content: string): string | null {
-    if (
-        content.startsWith("lame: ") ||
-        content.startsWith("Warning: ") ||
-        content.includes("Error ")
-    ) {
-        return content.startsWith("lame: ") ? content : `lame: ${content}`;
-    }
-
-    return null;
-}
-
 /**
  * Thin wrapper around the LAME CLI that manages temp files, progress events,
  * and output handling while delegating the heavy lifting to the binary.
  */
 class Lame {
-    private status: LameStatus = {
-        started: false,
-        finished: false,
-        progress: 0,
-        eta: undefined,
-    };
+    private status: LameStatus = createInitialStatus();
 
     private readonly emitter: LameProgressEmitter =
         new EventEmitter() as LameProgressEmitter;
 
     private readonly options: LameOptionsBag;
     private readonly builder: LameOptions;
-    private readonly args: string[];
 
     private filePath?: string;
     private fileBuffer?: Buffer;
@@ -98,9 +46,14 @@ class Lame {
     private tempPath: string;
 
     constructor(options: LameOptionsBag) {
+        if (options.output === "stream") {
+            throw new Error(
+                "lame: The streaming output mode requires createLameEncoderStream or createLameDecoderStream",
+            );
+        }
+
         this.options = options;
         this.builder = new LameOptions(this.options);
-        this.args = this.builder.getArguments();
         this.lamePath = resolveLameBinary();
         this.tempPath = join(tmpdir(), "node-lame");
     }
@@ -188,11 +141,6 @@ class Lame {
             throw new Error("Audio file to encode is not set");
         }
 
-        const args = [...this.args];
-        if (type === "decode") {
-            args.push("--decode");
-        }
-
         let inputPath = this.filePath;
 
         if (!inputPath && this.fileBuffer) {
@@ -200,7 +148,7 @@ class Lame {
         }
 
         try {
-            return await this.spawnLameAndTrackProgress(inputPath!, args, type);
+            return await this.spawnLameAndTrackProgress(inputPath!, type);
         } catch (error) {
             await this.removeTempArtifacts();
             throw error;
@@ -212,126 +160,19 @@ class Lame {
      */
     private async spawnLameAndTrackProgress(
         inputFilePath: string,
-        baseArgs: string[],
         type: ProgressKind,
     ): Promise<this> {
-        const args = [...baseArgs];
-
-        if (
-            this.builder.shouldUseDefaultDisptime() &&
-            !args.includes("--disptime")
-        ) {
-            args.push("--disptime", "1");
-        }
-
-        const normalizedArgs = args.map((value) => String(value));
-
+        this.status = createInitialStatus();
         const { outputPath, bufferOutput } =
             await this.prepareOutputTarget(type);
-        const spawnArgs = [inputFilePath, outputPath, ...normalizedArgs];
-
-        this.status = {
-            started: true,
-            finished: false,
-            progress: 0,
-            eta: undefined,
-        };
+        const spawnArgs = buildLameSpawnArgs(
+            this.builder,
+            type,
+            inputFilePath,
+            outputPath,
+        );
 
         return new Promise((resolve, reject) => {
-            const progressStdout = (data: Buffer) => {
-                const content = data.toString().trim();
-
-                if (content.length <= 6) {
-                    return;
-                }
-
-                if (
-                    type === "encode" &&
-                    content.includes("Writing LAME Tag...done")
-                ) {
-                    this.status.finished = true;
-                    this.status.progress = 100;
-                    this.status.eta = "00:00";
-
-                    this.emitter.emit("finish");
-                    this.emitter.emit("progress", [
-                        this.status.progress,
-                        this.status.eta,
-                    ]);
-                } else if (type === "encode") {
-                    const parsed = parseEncodeProgressLine(content);
-                    if (parsed) {
-                        if (
-                            parsed.progress !== undefined &&
-                            parsed.progress > this.status.progress
-                        ) {
-                            this.status.progress = parsed.progress;
-                        }
-
-                        if (parsed.eta) {
-                            this.status.eta = parsed.eta;
-                        }
-
-                        this.emitter.emit("progress", [
-                            this.status.progress,
-                            this.status.eta,
-                        ]);
-                        return;
-                    }
-                }
-
-                if (type === "decode") {
-                    const parsed = parseDecodeProgressLine(content);
-                    if (parsed !== null) {
-                        if (!Number.isNaN(parsed)) {
-                            this.status.progress = parsed;
-                        }
-
-                        this.emitter.emit("progress", [
-                            this.status.progress,
-                            this.status.eta,
-                        ]);
-                        return;
-                    }
-                }
-
-                const normalized = normalizeCliMessage(content);
-                if (normalized) {
-                    this.emitter.emit("error", new Error(normalized));
-                }
-            };
-
-            const progressOnClose = (code: number | null) => {
-                if (code === 0) {
-                    if (!this.status.finished) {
-                        this.emitter.emit("finish");
-                    }
-
-                    this.status.finished = true;
-                    this.status.progress = 100;
-                    this.status.eta = "00:00";
-                }
-
-                if (code === 255) {
-                    this.emitter.emit(
-                        "error",
-                        new Error(
-                            "Unexpected termination of the process, possibly directly after the start. Please check if the input and/or output does not exist.",
-                        ),
-                    );
-                }
-            };
-
-            const progressError = (error: Error) => {
-                this.emitter.emit("error", error);
-            };
-
-            const instance = spawn(this.lamePath, spawnArgs);
-            instance.stdout.on("data", progressStdout);
-            instance.stderr.on("data", progressStdout);
-            instance.on("close", progressOnClose);
-            instance.on("error", progressError);
-
             const cleanup = async () => {
                 if (this.fileBufferTempFilePath) {
                     await unlink(this.fileBufferTempFilePath).catch(() => {});
@@ -369,6 +210,19 @@ class Lame {
                 cleanup()
                     .then(() => reject(error))
                     .catch(reject);
+            });
+
+            spawnLameProcess({
+                binaryPath: this.lamePath,
+                spawnArgs,
+                kind: type,
+                status: this.status,
+                emitter: this.emitter,
+                completeOnTag: true,
+                progressSources: ["stdout", "stderr"],
+                onError: (error) => {
+                    this.emitter.emit("error", error);
+                },
             });
         });
     }
@@ -664,9 +518,9 @@ class Lame {
     }
 }
 
+export { Lame };
 export {
-    Lame,
     normalizeCliMessage,
     parseDecodeProgressLine,
     parseEncodeProgressLine,
-};
+} from "./lame-process";
