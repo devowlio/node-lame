@@ -49,6 +49,16 @@ jobs:
       - name: Integration tests
         run: pnpm run test:integration
 
+      - name: Determine changelog mode
+        id: changelog
+        run: |
+          git fetch --tags --force >/dev/null 2>&1 || true
+          if git rev-parse "v2.0.0" >/dev/null 2>&1; then
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -58,6 +68,8 @@ jobs:
         id: version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_CHANGELOG: ${{ steps.changelog.outputs.skip }}
         run: |
           set -eo pipefail
           pnpm run release:version > version.log 2>&1 || STATUS=$?

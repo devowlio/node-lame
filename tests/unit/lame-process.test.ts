@@ -16,7 +16,8 @@ type MockChildProcess = EventEmitter & {
 const spawnMock = vi.fn();
 
 vi.mock("node:child_process", () => ({
-    spawn: (...args: [string, string[]]) => spawnMock(...args),
+    spawn: (...args: [string, string[], Record<string, unknown>?]) =>
+        spawnMock(...args),
 }));
 
 const createMockChildProcess = (): MockChildProcess => {
@@ -184,22 +185,30 @@ describe("processProgressChunk", () => {
 });
 
 describe("getExitError", () => {
+    const binary = "/tmp/lame";
+
     it("returns null for successful exit", () => {
-        expect(getExitError(0)).toBeNull();
+        expect(getExitError(0, binary)).toBeNull();
     });
 
     it("returns descriptive error for exit code 255", () => {
-        const error = getExitError(255);
+        const error = getExitError(255, binary);
         expect(error?.message).toContain("Unexpected termination of the process");
     });
 
+    it("returns descriptive error for exit code 127", () => {
+        const error = getExitError(127, binary);
+        expect(error?.message).toContain(binary);
+        expect(error?.message).toContain("127");
+    });
+
     it("returns error for other exit codes", () => {
-        const error = getExitError(3);
+        const error = getExitError(3, binary);
         expect(error?.message).toBe("lame: Process exited with code 3");
     });
 
     it("handles null exit codes", () => {
-        const error = getExitError(null);
+        const error = getExitError(null, binary);
         expect(error?.message).toBe("lame: Process exited unexpectedly");
     });
 });
@@ -393,12 +402,51 @@ describe("spawnLameProcess", () => {
         });
 
         expect(resolveSpy).toHaveBeenCalled();
-        expect(spawnMock).toHaveBeenCalledWith("/resolved/lame", [
-            "input.raw",
-            "output.mp3",
-        ]);
+        expect(spawnMock).toHaveBeenCalledWith(
+            "/resolved/lame",
+            ["input.raw", "output.mp3"],
+            expect.objectContaining({ env: expect.any(Object) }),
+        );
         expect(errors).toEqual([]);
         resolveSpy.mockRestore();
+    });
+
+    it("extends the environment with bundled library directory when available", () => {
+        const status = createInitialStatus();
+        const emitter = new EventEmitter() as LameProgressEmitter;
+        const errors: Error[] = [];
+
+        const libSpy = vi.spyOn(
+            binaryModule,
+            "resolveBundledLibraryDirectory",
+        );
+        libSpy.mockReturnValue("/vendor/lib");
+
+        spawnLameProcess({
+            binaryPath: "/usr/bin/lame",
+            spawnArgs: ["input.raw", "output.mp3"],
+            kind: "encode",
+            status,
+            emitter,
+            progressSources: [],
+            onError: (error) => errors.push(error),
+        });
+
+        const call = spawnMock.mock.calls.at(-1);
+        const key =
+            process.platform === "darwin"
+                ? "DYLD_LIBRARY_PATH"
+                : process.platform === "win32"
+                    ? "PATH"
+                    : "LD_LIBRARY_PATH";
+        expect(call?.[2]).toMatchObject({
+            env: expect.objectContaining({
+                [key]: expect.stringMatching(/^\/vendor\/lib/),
+            }),
+        });
+
+        expect(errors).toEqual([]);
+        libSpy.mockRestore();
     });
 
     it("processes stderr progress updates when configured", () => {

@@ -1,11 +1,14 @@
 import {
     chmodSync,
     copyFileSync,
+    cpSync,
     existsSync,
     mkdirSync,
     mkdtempSync,
     readdirSync,
+    rmSync,
     statSync,
+    writeFileSync,
 } from "node:fs";
 import { createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
@@ -29,6 +32,9 @@ const INSTALL_BASE = join(
     `${PLATFORM}-${ARCH}`,
 );
 const TARGET_BINARY = join(INSTALL_BASE, `lame${EXECUTABLE_SUFFIX}`);
+const LIB_DIRECTORY = join(INSTALL_BASE, "lib");
+const LIB_DIRECTORY_MARKER = join(LIB_DIRECTORY, ".installed");
+const LIBSNDFILE_VERSION = "1.2.0-1+deb12u1";
 
 const DOWNLOAD_SOURCES = {
     "linux-x64": [
@@ -93,6 +99,45 @@ const DOWNLOAD_SOURCES = {
         {
             type: "zip",
             url: `https://www.rarewares.org/files/mp3/LAME-${LAME_VERSION}-Win-ARM64.zip`,
+        },
+    ],
+};
+
+const LINUX_SHARED_LIBRARY_PACKAGES = {
+    "linux-x64": [
+        {
+            name: "libmp3lame0",
+            url: `https://deb.debian.org/debian/pool/main/l/lame/libmp3lame0_${LAME_VERSION}-6_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
+        {
+            name: "libsndfile1",
+            url: `https://deb.debian.org/debian/pool/main/libs/libsndfile/libsndfile1_${LIBSNDFILE_VERSION}_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
+    ],
+    "linux-arm64": [
+        {
+            name: "libmp3lame0",
+            url: `https://deb.debian.org/debian/pool/main/l/lame/libmp3lame0_${LAME_VERSION}-6_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
+        {
+            name: "libsndfile1",
+            url: `https://deb.debian.org/debian/pool/main/libs/libsndfile/libsndfile1_${LIBSNDFILE_VERSION}_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
+    ],
+    "linux-arm": [
+        {
+            name: "libmp3lame0",
+            url: `https://deb.debian.org/debian/pool/main/l/lame/libmp3lame0_${LAME_VERSION}-6_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
+        },
+        {
+            name: "libsndfile1",
+            url: `https://deb.debian.org/debian/pool/main/libs/libsndfile/libsndfile1_${LIBSNDFILE_VERSION}_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
         },
     ],
 };
@@ -385,6 +430,92 @@ function writeBinaryToVendorDirectory(fromPath) {
     logInstallerMessage(`Installed LAME binary to ${TARGET_BINARY}`);
 }
 
+function copyLibrariesIntoTarget(sourceDir) {
+    const entries = readdirSync(sourceDir);
+    for (const entry of entries) {
+        const fromPath = join(sourceDir, entry);
+        const toPath = join(LIB_DIRECTORY, entry);
+        cpSync(fromPath, toPath, {
+            recursive: true,
+            force: true,
+            errorOnExist: false,
+        });
+    }
+}
+
+async function downloadAndInstallSharedLibraryPackage(dependency) {
+    const tmpDir = mkdtempSync(join(tmpdir(), "node-lame-lib-"));
+    const archivePath = join(tmpDir, basename(new URL(dependency.url).pathname));
+
+    await downloadFileTo(dependency.url, archivePath);
+
+    const extractDir = join(tmpDir, "extract");
+    mkdirSync(extractDir, { recursive: true });
+
+    await runCommandAndWait("ar", ["x", archivePath, "data.tar.xz"], {
+        cwd: extractDir,
+    });
+    await runCommandAndWait("tar", ["-xf", "data.tar.xz"], {
+        cwd: extractDir,
+    });
+
+    const sourceDir = join(extractDir, dependency.libraryRoot);
+    if (!existsSync(sourceDir)) {
+        throw new Error(
+            `Unable to locate ${dependency.libraryRoot} in ${dependency.name} package`,
+        );
+    }
+
+    copyLibrariesIntoTarget(sourceDir);
+    logInstallerMessage(
+        `Installed shared libraries for ${dependency.name} from ${dependency.url}`,
+    );
+}
+
+async function installLinuxSharedLibraries() {
+    const platformKey = `${PLATFORM}-${ARCH}`;
+    const dependencies = LINUX_SHARED_LIBRARY_PACKAGES[platformKey];
+
+    if (!dependencies || dependencies.length === 0) {
+        logInstallerMessage(
+            `No shared library dependencies configured for ${platformKey}`,
+        );
+        return;
+    }
+
+    if (existsSync(LIB_DIRECTORY_MARKER) && existsSync(LIB_DIRECTORY)) {
+        logInstallerMessage(
+            `Bundled shared libraries already present at ${LIB_DIRECTORY}`,
+        );
+        return;
+    }
+
+    rmSync(LIB_DIRECTORY, { recursive: true, force: true });
+    mkdirSync(LIB_DIRECTORY, { recursive: true });
+
+    for (const dependency of dependencies) {
+        await downloadAndInstallSharedLibraryPackage(dependency);
+    }
+
+    writeFileSync(LIB_DIRECTORY_MARKER, String(Date.now()), "utf-8");
+    logInstallerMessage(
+        `Shared library installation complete at ${LIB_DIRECTORY}`,
+    );
+}
+
+async function installPlatformSpecificDependencies() {
+    if (PLATFORM === "linux") {
+        try {
+            await installLinuxSharedLibraries();
+        } catch (error) {
+            logInstallerMessage(
+                `Failed to install Linux shared libraries: ${error.message}`,
+            );
+            throw error;
+        }
+    }
+}
+
 /**
  * Ensures a suitable LAME binary exists in the vendor directory, downloading it if absent.
  */
@@ -393,6 +524,7 @@ async function ensureBundledBinaryAvailable() {
         logInstallerMessage(
             `Bundled LAME binary already present at ${TARGET_BINARY}`,
         );
+        await installPlatformSpecificDependencies();
         return;
     }
 
@@ -436,6 +568,7 @@ async function ensureBundledBinaryAvailable() {
         try {
             if (source.type === "zip") {
                 await downloadAndInstallZipBinary(source);
+                await installPlatformSpecificDependencies();
                 return;
             }
 
@@ -448,11 +581,13 @@ async function ensureBundledBinaryAvailable() {
                 }
 
                 await downloadAndInstallDebianBinary(source);
+                await installPlatformSpecificDependencies();
                 return;
             }
 
             if (source.type === "ghcr") {
                 await downloadAndInstallGhcrBinary(source);
+                await installPlatformSpecificDependencies();
                 return;
             }
 
