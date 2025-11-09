@@ -115,7 +115,9 @@ You operate as a senior Node.js and TypeScript backend engineer focused on maint
 - `package.json` exports map `.` to the compiled bundle with typed entry points; adjust both ESM and CJS paths when restructuring.
 - Keep `files` whitelist minimal.
 - Update README examples when public API changes, ensuring both buffer and file workflows remain documented.
-- `CHANGELOG.md` is generated from Conventional Commits during the release workflow; do not edit it manually.
+- `CHANGELOG.md` is generated from Conventional Commits during the release workflow for releases after 2.0.0; that release was curated manually, so avoid regenerating it automatically.
+- The release helper `scripts/release-version.mjs` honors `SKIP_CHANGELOG=1` for manual runs (used when finalizing 2.0.0); do not set it for subsequent releases so Lerna can emit the changelog.
+- The CI release workflow automatically toggles `SKIP_CHANGELOG` based on whether tag `v2.0.0` exists; until that tag is present (i.e., while preparing the 2.0.0 release) the changelog is kept manual, and all later releases revert to Conventional Commits output.
 - Maintain parity between runtime behaviour and README option tables; treat the table as authoritative for user-facing docs.
 - Generated outputs (`dist/**`, `coverage/**`, `vendor/**`) must never be checked into source control manually.
 
@@ -128,6 +130,7 @@ You operate as a senior Node.js and TypeScript backend engineer focused on maint
 - Start with unit tests to capture expected behaviour, then adjust implementation, and finish by running the full test suite.
 - When modifying CLI behaviour, test on at least one supported platform or enhance integration tests with synthetic binaries.
 - Prefer extending existing classes and helpers over introducing new modules; if a new module is required, place it under `src/core` (runtime logic) or `src/internal` (supporting utilities).
-- Document behavioural changes in commit messages following Conventional Commit rules; the release tooling will derive `CHANGELOG.md` automatically.
-- Never edit `CHANGELOG.md` by hand; rely on the release workflow or explicit project tooling to populate it.
+- Document behavioural changes in commit messages following Conventional Commit rules so the release tooling can derive `CHANGELOG.md` for future releases.
+- Manual edits to `CHANGELOG.md` are only allowed for the 2.0.0 release; subsequent entries must come from the automated workflow.
 - After finishing any feature implementation, include in your final response a Conventional Commit-style message suggestion that downstream tooling can use.
+- When referencing Node.js types, import them explicitly (e.g. `import type { ProcessEnv } from "node:process";`) instead of relying on the `NodeJS.*` namespace to keep ESLint satisfied.

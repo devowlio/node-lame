@@ -2,7 +2,7 @@
   "name": "node-lame",
   "version": "1.5.1",
   "description": "LAME MP3 encoder for Node.js",
-  "homepage": "https://github.com/devowlio/node-lame",
+  "homepage": "https://www.npmjs.com/package/node-lame",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devowlio/node-lame.git"
@@ -54,7 +54,7 @@
     "prepublishOnly": "pnpm run build",
     "prepare": "husky",
     "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s",
-    "release:version": "HUSKY=0 pnpm lerna version --yes --no-commit-hooks",
+    "release:version": "node ./scripts/release-version.mjs",
     "release:publish": "pnpm lerna publish from-git --yes --create-release github",
     "release": "pnpm run release:version && pnpm run release:publish"
   },
@@ -80,12 +80,15 @@
     "@typescript-eslint/parser": "~8.46.2",
     "@vitest/coverage-istanbul": "~4.0.4",
     "conventional-changelog-cli": "^5.0.0",
+    "conventional-changelog-conventionalcommits": "~9.1.0",
+    "conventional-recommended-bump": "~11.2.0",
     "eslint": "~9.38.0",
     "eslint-config-prettier": "~10.1.8",
     "globals": "~16.4.0",
     "husky": "~9.1.7",
     "lerna": "~9.0.0",
     "prettier": "~3.6.2",
+    "semver": "^7.7.3",
     "tsup": "~8.5.0",
     "tsx": "~4.20.6",
     "typescript": "~5.9.3",

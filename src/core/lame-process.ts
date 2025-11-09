@@ -1,10 +1,19 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import type { ProcessEnv } from "node:process";
+import { delimiter } from "node:path";
 
-import type { LameProgressEmitter, LameStatus } from "../types";
-import { resolveLameBinary } from "../internal/binary/resolve-binary";
+import type {
+    LameProgressEmitter,
+    LameStatus,
+    LameStreamMode,
+} from "../types";
+import {
+    resolveBundledLibraryDirectory,
+    resolveLameBinary,
+} from "../internal/binary/resolve-binary";
 import { LameOptions } from "./lame-options";
 
-type ProgressKind = "encode" | "decode";
+type ProgressKind = LameStreamMode;
 
 const LAME_TAG_MESSAGE = "Writing LAME Tag...done";
 
@@ -168,7 +177,10 @@ function processProgressChunk(
     return {};
 }
 
-function getExitError(code: number | null): Error | null {
+function getExitError(
+    code: number | null,
+    executable: string,
+): Error | null {
     if (code === 0) {
         return null;
     }
@@ -179,11 +191,49 @@ function getExitError(code: number | null): Error | null {
         );
     }
 
+    if (code === 127) {
+        return new Error(
+            `lame: Failed to execute '${executable}'. Exit code 127 usually indicates missing shared libraries or an unreadable binary. Run scripts/diagnose-lame.mjs for details.`,
+        );
+    }
+
     if (code !== null) {
         return new Error(`lame: Process exited with code ${code}`);
     }
 
     return new Error("lame: Process exited unexpectedly");
+}
+
+function applyBundledLibraryPath(
+    env: ProcessEnv,
+    libraryDir: string | null,
+): ProcessEnv {
+    if (!libraryDir) {
+        return env;
+    }
+
+    let variable: "LD_LIBRARY_PATH" | "DYLD_LIBRARY_PATH" | "PATH" | null =
+        null;
+
+    if (process.platform === "linux") {
+        variable = "LD_LIBRARY_PATH";
+    } else if (process.platform === "darwin") {
+        variable = "DYLD_LIBRARY_PATH";
+    } else if (process.platform === "win32") {
+        variable = "PATH";
+    }
+
+    if (!variable) {
+        return env;
+    }
+
+    const currentValue = env[variable];
+    return {
+        ...env,
+        [variable]: currentValue
+            ? `${libraryDir}${delimiter}${currentValue}`
+            : libraryDir,
+    };
 }
 
 interface SpawnLameProcessOptions {
@@ -231,7 +281,11 @@ function spawnLameProcess(
     status.eta = undefined;
 
     const executable = binaryPath ?? resolveLameBinary();
-    const child = spawn(executable, spawnArgs);
+    const libraryDir = resolveBundledLibraryDirectory();
+    const childEnv = applyBundledLibraryPath({ ...process.env }, libraryDir);
+    const child = spawn(executable, spawnArgs, {
+        env: childEnv,
+    });
 
     const progressTargets = new Set(progressSources);
     let hasSeenCliError = false;
@@ -323,7 +377,7 @@ function spawnLameProcess(
 
     child.on("error", emitCliError);
     child.on("close", (code) => {
-        const exitError = getExitError(code);
+        const exitError = getExitError(code, executable);
         if (exitError) {
             const bufferedLines = stderrBuffer
                 .split(/\r?\n/)

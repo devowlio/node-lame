@@ -105,4 +105,20 @@ describe("resolve-binary", () => {
         const derivedFromCwd = resolvePackageRoot(undefined, undefined);
         expect(derivedFromCwd).toBe(process.cwd());
     });
+
+    it("detects package root when compiled assets live directly inside dist", async () => {
+        const projectRoot = join(sharedTempDir, "pkg-flat");
+        const distDir = join(projectRoot, "dist");
+
+        await mkdir(distDir, { recursive: true });
+        await writeFile(join(projectRoot, "package.json"), "{}");
+
+        const { resolvePackageRoot } = await importResolver();
+        const derived = resolvePackageRoot(
+            pathToFileURL(join(distDir, "index.cjs")).href,
+            distDir,
+        );
+
+        expect(derived).toBe(projectRoot);
+    });
 });

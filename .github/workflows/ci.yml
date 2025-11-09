@@ -43,6 +43,14 @@ jobs:
             - name: Build package
               run: pnpm run build
 
+            - name: Ensure bundled LAME binary
+              env:
+                  LAME_FORCE_DOWNLOAD: "1"
+              run: node ./scripts/install-lame.mjs
+
+            - name: Diagnose bundled LAME binary
+              run: node ./scripts/diagnose-lame.mjs
+
             - name: Run examples
               run: |
                   pnpm run example:wav-to-mp3
