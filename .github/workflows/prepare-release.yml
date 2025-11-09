@@ -68,6 +68,7 @@ jobs:
         id: version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SKIP_CHANGELOG: ${{ steps.changelog.outputs.skip }}
         run: |
           set -eo pipefail
