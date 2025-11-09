@@ -1,22 +1,20 @@
 {
-  "$schema": "https://raw.githubusercontent.com/lerna/lerna/main/schemas/lerna-schema.json",
-  "packages": [
-    "."
-  ],
-  "version": "1.5.1",
-  "npmClient": "pnpm",
-  "useNx": false,
-  "command": {
-    "version": {
-      "conventionalCommits": true,
-      "changelogPreset": "conventionalcommits",
-      "message": "chore(release): publish",
-      "allowBranch": "master"
-    },
-    "publish": {
-      "conventionalCommits": true,
-      "changelogPreset": "conventionalcommits",
-      "createRelease": "github"
+    "$schema": "https://raw.githubusercontent.com/lerna/lerna/main/schemas/lerna-schema.json",
+    "packages": ["."],
+    "version": "2.0.0",
+    "npmClient": "pnpm",
+    "useNx": false,
+    "command": {
+        "version": {
+            "conventionalCommits": true,
+            "changelogPreset": "conventionalcommits",
+            "message": "chore(release): publish",
+            "allowBranch": "master"
+        },
+        "publish": {
+            "conventionalCommits": true,
+            "changelogPreset": "conventionalcommits",
+            "createRelease": "github"
+        }
     }
-  }
 }
