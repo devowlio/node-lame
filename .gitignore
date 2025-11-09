@@ -39,4 +39,6 @@ dist/
 # Test
 coverage/
 coverage-unit.json
-test/encoded.mp3
+
+# Examples
+examples/audios/example.*.*

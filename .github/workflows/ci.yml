@@ -43,6 +43,12 @@ jobs:
             - name: Build package
               run: pnpm run build
 
+            - name: Run examples
+              run: |
+                  pnpm run example:wav-to-mp3
+                  pnpm run example:mp3-to-wav
+                  pnpm run example:stream
+
     postinstall:
         name: LAME install on ${{ matrix.os }}
         runs-on: ${{ matrix.os }}
