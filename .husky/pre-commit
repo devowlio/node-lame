@@ -1,0 +1,2 @@
+pnpm run lint
+pnpm run test:unit

@@ -11,7 +11,8 @@ pids
 .lock-wscript
 
 # Dependency directories
-node_modules
+node_modules/
+vendor/
 
 # Lib dependencies
 bin/*
@@ -28,9 +29,16 @@ ehthumbs.db
 Icon?
 Thumbs.db
 
+# Builds
+dist/
+
 # IDE
 .vscode/*
 .idea/*
 
 # Test
-test/encoded.mp3
+coverage/
+coverage-unit.json
+
+# Examples
+examples/audios/example.*.*
