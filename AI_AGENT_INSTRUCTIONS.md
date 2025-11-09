@@ -63,6 +63,13 @@ You operate as a senior Node.js and TypeScript backend engineer focused on maint
 - Keep `normalizeCliMessage` translating warnings and errors into `lame:` prefixed messages to signal user-visible issues consistently.
 - When adding new parsing rules, guard them with unit tests to prevent regressions on partial output lines or malformed data.
 
+## Examples
+- Place runnable demos under `examples/` as TypeScript ESM files and invoke them through `pnpm example:*` scripts that rely on `tsx`; update `package.json` scripts whenever a new example is added.
+- Keep shared logic (dynamic `node-lame` resolution, temp-file cleanup, etc.) inside `examples/helpers/` and reuse those utilities to avoid duplicating `ENOENT` guards or import fallbacks.
+- Build all paths via `new URL("./audios/<file>", import.meta.url)` (wrapped with `fileURLToPath`/`resolve`) instead of `__dirname` so the code mirrors production ESM usage.
+- Examples must log encoder/decoder progress through the emitter APIs and ensure they clean up/overwrite destination files before running to keep reruns deterministic.
+- Whenever a new recipe is added, update `package.json` and `.github/workflows/ci.yml` so the corresponding `pnpm example:*` script runs during CI; the pipeline is the canonical source of truth for example coverage.
+
 ## Error Handling
 - Throw descriptive `Error` instances; avoid silent failures or rejected promises without context.
 - Exit code `255` triggers a tailored error message about unexpected termination—preserve this behaviour for backwards compatibility.

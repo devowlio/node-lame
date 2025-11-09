@@ -47,6 +47,9 @@
     "test:unit": "vitest run tests/unit --coverage --pool=threads",
     "test:integration": "vitest run tests/integration --pool=threads",
     "fix": "pnpm exec eslint . --ext .ts,.mjs --fix && pnpm exec prettier --write .",
+    "example:wav-to-mp3": "tsx examples/convert-wav-to-mp3.ts",
+    "example:mp3-to-wav": "tsx examples/convert-mp3-to-wav.ts",
+    "example:stream": "tsx examples/convert-stream-to-mp3.ts",
     "postinstall": "node ./scripts/install-lame.mjs",
     "prepublishOnly": "pnpm run build",
     "prepare": "husky",
@@ -84,6 +87,7 @@
     "lerna": "~9.0.0",
     "prettier": "~3.6.2",
     "tsup": "~8.5.0",
+    "tsx": "~4.20.6",
     "typescript": "~5.9.3",
     "vitest": "~4.0.4"
   }
