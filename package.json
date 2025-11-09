@@ -2,7 +2,7 @@
   "name": "node-lame",
   "version": "1.5.1",
   "description": "LAME MP3 encoder for Node.js",
-  "homepage": "https://github.com/devowlio/node-lame",
+  "homepage": "https://www.npmjs.com/package/node-lame",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devowlio/node-lame.git"
@@ -54,7 +54,7 @@
     "prepublishOnly": "pnpm run build",
     "prepare": "husky",
     "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s",
-    "release:version": "HUSKY=0 pnpm lerna version --yes --no-commit-hooks",
+    "release:version": "node ./scripts/release-version.mjs",
     "release:publish": "pnpm lerna publish from-git --yes --create-release github",
     "release": "pnpm run release:version && pnpm run release:publish"
   },
