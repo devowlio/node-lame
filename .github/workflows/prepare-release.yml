@@ -72,6 +72,11 @@ jobs:
           SKIP_CHANGELOG: ${{ steps.changelog.outputs.skip }}
         run: |
           set -eo pipefail
+          if [ "${SKIP_CHANGELOG}" = "1" ]; then
+            echo "[release] Skipping release automation until v2.0.0 changelog is available."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           pnpm run release:version > version.log 2>&1 || STATUS=$?
           cat version.log
           if [ -n "$STATUS" ]; then
