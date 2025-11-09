@@ -7,10 +7,7 @@ import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Lame } from "../../src/core/lame";
-import {
-    createLameDecoderStream,
-    createLameEncoderStream,
-} from "../../src/core/lame-stream";
+import { LameStream } from "../../src/core/lame-stream";
 
 const shouldRun = process.platform !== "win32";
 
@@ -730,9 +727,10 @@ process.exit(${exitCode});
     describe("Streaming scenarios", () => {
         it("encodes streaming PCM input to MP3 output", async () => {
             const fakeBinaryPath = await createStreamingBinary();
-            const encoderStream = createLameEncoderStream({
+            const encoderStream = new LameStream({
                 binaryPath: fakeBinaryPath,
                 bitrate: 128,
+                mode: "encode",
             });
 
             encoderStream.getEmitter().on("error", () => {});
@@ -771,8 +769,9 @@ process.exit(${exitCode});
 
         it("decodes streaming MP3 input to PCM output", async () => {
             const fakeBinaryPath = await createStreamingBinary();
-            const decoderStream = createLameDecoderStream({
+            const decoderStream = new LameStream({
                 binaryPath: fakeBinaryPath,
+                mode: "decode",
             });
 
             decoderStream.getEmitter().on("error", () => {});
@@ -814,8 +813,9 @@ process.exit(${exitCode});
             process.env.LAME_STREAM_FAIL = "1";
 
             const fakeBinaryPath = await createStreamingBinary();
-            const encoderStream = createLameEncoderStream({
+            const encoderStream = new LameStream({
                 binaryPath: fakeBinaryPath,
+                mode: "encode",
             });
 
             encoderStream.getEmitter().on("error", () => {});

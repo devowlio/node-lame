@@ -8,6 +8,7 @@ import type {
     LameOptionsBag,
     LameProgressEmitter,
     LameStatus,
+    LameStreamMode,
     LameStreamOptions,
 } from "../types";
 import { LameOptions } from "./lame-options";
@@ -20,53 +21,45 @@ import type { ProgressKind } from "./lame-process";
 
 type StreamKind = ProgressKind;
 
-interface LameStreamConfig extends LameStreamOptions {
+type LameStreamConfig = Omit<LameStreamOptions, "output"> & {
     binaryPath?: string;
-}
+};
 
-class LameCodecStream extends Duplex {
+class LameStream extends Duplex {
     private readonly emitter: LameProgressEmitter;
     private readonly status: LameStatus;
-    private readonly kind: StreamKind;
-    private readonly child: ChildProcessWithoutNullStreams;
     private readonly builder: LameOptions;
+    private readonly binaryPath?: string;
+    private readonly kind: StreamKind;
+
+    private child?: ChildProcessWithoutNullStreams;
 
     private isStdoutPaused = false;
     private hasErrored = false;
     private finished = false;
 
-    constructor(kind: StreamKind, options: LameStreamConfig) {
+    constructor(options: LameStreamConfig) {
         super({ allowHalfOpen: false });
 
-        const { binaryPath, ...cliOptions } = options;
+        const { binaryPath, mode, ...cliOptions } = options;
+        if (!isValidStreamMode(mode)) {
+            throw new Error(
+                'lame: LameStream requires a mode of either "encode" or "decode"',
+            );
+        }
+
         const normalizedOptions: LameOptionsBag = {
-            ...(cliOptions as Omit<LameStreamOptions, "output">),
+            ...(cliOptions as Omit<LameStreamOptions, "output" | "mode">),
             output: "stream",
         } as LameOptionsBag;
 
-        this.kind = kind;
+        this.binaryPath = binaryPath;
         this.status = createInitialStatus();
         this.emitter = new EventEmitter() as LameProgressEmitter;
         this.builder = new LameOptions(normalizedOptions);
+        this.kind = mode;
 
-        const spawnArgs = buildLameSpawnArgs(this.builder, this.kind, "-", "-");
-
-        this.child = spawnLameProcess({
-            binaryPath,
-            spawnArgs,
-            kind: this.kind,
-            status: this.status,
-            emitter: this.emitter,
-            progressSources: ["stderr"],
-            completeOnTag: true,
-            onError: (error) => this.emitStreamError(error),
-            onStdoutData: (chunk) => this.forwardStdout(chunk),
-            onStdoutEnd: () => this.push(null),
-            onStdoutError: (error) => this.emitStreamError(error),
-            onStderrError: (error) => this.emitStreamError(error),
-            onStdinError: (error) => this.emitStreamError(error),
-            onSuccess: () => this.handleSuccessfulClose(),
-        });
+        this.initialize(this.kind);
     }
 
     public getEmitter(): LameProgressEmitter {
@@ -78,6 +71,10 @@ class LameCodecStream extends Duplex {
     }
 
     public override _read(): void {
+        if (!this.child) {
+            return;
+        }
+
         if (this.isStdoutPaused && !this.child.stdout.readableEnded) {
             this.isStdoutPaused = false;
             this.child.stdout.resume();
@@ -89,18 +86,24 @@ class LameCodecStream extends Duplex {
         encoding: BufferEncoding,
         callback: (error?: Error | null) => void,
     ): void {
-        if (this.finished || this.child.stdin.destroyed) {
+        const child = this.child;
+        if (!child) {
+            callback(new Error("lame: Stream mode is not initialized yet"));
+            return;
+        }
+
+        if (this.finished || child.stdin.destroyed) {
             callback(new Error("lame: Stream has already finished"));
             return;
         }
 
         try {
-            const flushed = this.child.stdin.write(chunk, encoding);
+            const flushed = child.stdin.write(chunk, encoding);
             if (!flushed) {
                 const cleanup = () => {
-                    this.child.stdin.off("drain", onDrain);
-                    this.child.stdin.off("error", onError);
-                    this.child.stdin.off("close", onClose);
+                    child.stdin.off("drain", onDrain);
+                    child.stdin.off("error", onError);
+                    child.stdin.off("close", onClose);
                 };
 
                 const onDrain = () => {
@@ -116,9 +119,9 @@ class LameCodecStream extends Duplex {
                     callback(new Error("lame: Input stream closed before drain"));
                 };
 
-                this.child.stdin.once("drain", onDrain);
-                this.child.stdin.once("error", onError);
-                this.child.stdin.once("close", onClose);
+                child.stdin.once("drain", onDrain);
+                child.stdin.once("error", onError);
+                child.stdin.once("close", onClose);
                 return;
             }
         } catch (error) {
@@ -130,8 +133,14 @@ class LameCodecStream extends Duplex {
     }
 
     public override _final(callback: (error?: Error | null) => void): void {
+        const child = this.child;
+        if (!child) {
+            callback(new Error("lame: Stream mode is not initialized yet"));
+            return;
+        }
+
         try {
-            this.child.stdin.end();
+            child.stdin.end();
         } catch (error) {
             callback(error as Error);
             return;
@@ -144,9 +153,16 @@ class LameCodecStream extends Duplex {
         error: Error | null,
         callback: (error?: Error | null) => void,
     ): void {
+        const child = this.child;
+
+        if (!child) {
+            callback(error ?? null);
+            return;
+        }
+
         try {
-            if (!this.child.killed) {
-                this.child.kill();
+            if (!child.killed) {
+                child.kill();
             }
         } catch (killError) {
             callback(killError as Error);
@@ -157,13 +173,38 @@ class LameCodecStream extends Duplex {
         callback(error ?? null);
     }
 
+    private initialize(kind: StreamKind): void {
+        if (this.child) {
+            return;
+        }
+
+        const spawnArgs = buildLameSpawnArgs(this.builder, kind, "-", "-");
+
+        this.child = spawnLameProcess({
+            binaryPath: this.binaryPath,
+            spawnArgs,
+            kind,
+            status: this.status,
+            emitter: this.emitter,
+            progressSources: ["stderr"],
+            completeOnTag: true,
+            onError: (error) => this.emitStreamError(error),
+            onStdoutData: (chunk) => this.forwardStdout(chunk),
+            onStdoutEnd: () => this.push(null),
+            onStdoutError: (error) => this.emitStreamError(error),
+            onStderrError: (error) => this.emitStreamError(error),
+            onStdinError: (error) => this.emitStreamError(error),
+            onSuccess: () => this.handleSuccessfulClose(),
+        });
+    }
+
     private forwardStdout(chunk: Buffer) {
         if (this.hasErrored || this.finished) {
             return;
         }
 
         const shouldContinue = this.push(chunk);
-        if (!shouldContinue) {
+        if (!shouldContinue && this.child) {
             this.isStdoutPaused = true;
             this.child.stdout.pause();
         }
@@ -188,8 +229,9 @@ class LameCodecStream extends Duplex {
         this.status.finished = true;
         this.cleanupChildListeners();
         this.emitter.emit("error", error);
+
         try {
-            if (!this.child.killed) {
+            if (this.child && !this.child.killed) {
                 this.child.kill();
             }
         } catch {
@@ -200,6 +242,10 @@ class LameCodecStream extends Duplex {
     }
 
     private cleanupChildListeners() {
+        if (!this.child) {
+            return;
+        }
+
         this.child.stdout.removeAllListeners();
         this.child.stderr.removeAllListeners();
         this.child.stdin.removeAllListeners();
@@ -207,17 +253,9 @@ class LameCodecStream extends Duplex {
     }
 }
 
-const createLameEncoderStream = (options: LameStreamConfig) => {
-    return new LameCodecStream("encode", options);
+const isValidStreamMode = (value: unknown): value is LameStreamMode => {
+    return value === "encode" || value === "decode";
 };
 
-const createLameDecoderStream = (options: LameStreamConfig) => {
-    return new LameCodecStream("decode", options);
-};
-
-export {
-    LameCodecStream,
-    createLameDecoderStream,
-    createLameEncoderStream,
-};
+export { LameStream };
 export type { LameStreamConfig };

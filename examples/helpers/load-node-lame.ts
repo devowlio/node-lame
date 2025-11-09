@@ -1,7 +1,7 @@
 type NodeLameModule = typeof import("../../src/index");
 
 const MODULE_NOT_FOUND_CODE = "ERR_MODULE_NOT_FOUND";
-const LOCAL_FALLBACKS = ["../../dist/index.cjs", "../../src/index.ts"] as const;
+const LOCAL_FALLBACKS = ["../../src/index.ts", "../../dist/index.cjs"] as const;
 
 type ErrorWithCode = {
     code?: string;
@@ -53,6 +53,5 @@ const loadNodeLame = async (): Promise<NodeLameModule> => {
 
 const nodeLame = await loadNodeLame();
 
-export const { Lame, createLameDecoderStream, createLameEncoderStream } =
-    nodeLame;
+export const { Lame, LameStream } = nodeLame;
 export default nodeLame;

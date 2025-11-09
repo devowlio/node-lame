@@ -86,8 +86,11 @@ interface LameOptionsBag {
     meta?: MetaOptions;
 }
 
+type LameStreamMode = "encode" | "decode";
+
 type LameStreamOptions = Omit<LameOptionsBag, "output"> & {
     output?: "stream";
+    mode: LameStreamMode;
 };
 
 type SampleFrequency = 8 | 11.025 | 12 | 16 | 22.05 | 24 | 32 | 44.1 | 48;
@@ -186,4 +189,5 @@ export type {
     HelpTopic,
     CustomFrameRecord,
     LameStreamOptions,
+    LameStreamMode,
 };

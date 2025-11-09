@@ -1,5 +1,4 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import type { ProcessEnv } from "node:process";
 import { delimiter } from "node:path";
 
 import type {
@@ -14,6 +13,7 @@ import {
 import { LameOptions } from "./lame-options";
 
 type ProgressKind = LameStreamMode;
+type ProcessEnv = Record<string, string | undefined>;
 
 const LAME_TAG_MESSAGE = "Writing LAME Tag...done";
 
