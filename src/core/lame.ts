@@ -48,7 +48,7 @@ class Lame {
     constructor(options: LameOptionsBag) {
         if (options.output === "stream") {
             throw new Error(
-                "lame: The streaming output mode requires createLameEncoderStream or createLameDecoderStream",
+                'lame: The streaming output mode requires LameStream with mode set to "encode" or "decode"',
             );
         }
 

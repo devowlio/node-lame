@@ -331,6 +331,61 @@ await encoder.encode();
 
 Setting `disptime` changes how often progress is emitted by the LAME CLI, while `silent`, `quiet`, and `verbose` let you align terminal verbosity with your logging needs.
 
+### Encode via Node.js streams
+
+When you already operate on `Readable`/`Writable` streams (for example when piping uploaded audio to disk), use the encoder stream helper to avoid buffering everything in memory.
+
+```js
+import { createReadStream, createWriteStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
+import { LameStream } from "node-lame";
+
+const encoderStream = new LameStream({
+    mode: "encode",
+    bitrate: 192,
+});
+
+encoderStream.getEmitter().on("progress", ([progress, eta]) => {
+    process.stdout.write(
+        `Streaming progress: ${progress}%${eta ? ` – ETA ${eta}` : ""}\r`,
+    );
+});
+
+await pipeline(
+    createReadStream("./audio-files/example.wav"),
+    encoderStream,
+    createWriteStream("./audio-files/example.stream.mp3"),
+);
+```
+
+### Decode via Node.js streams
+
+Decoding an MP3 back to WAV (or raw PCM) works the same way—swap in the decoder helper and wire it into your existing stream graph.
+
+```js
+import { createReadStream, createWriteStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
+import { LameStream } from "node-lame";
+
+const decoderStream = new LameStream({
+    mode: "decode",
+});
+
+decoderStream.getEmitter().on("progress", ([progress, eta]) => {
+    process.stdout.write(
+        `Decoding progress: ${progress}%${eta ? ` – ETA ${eta}` : ""}\r`,
+    );
+});
+
+await pipeline(
+    createReadStream("./audio-files/example.stream.mp3"),
+    decoderStream,
+    createWriteStream("./audio-files/example.stream.wav"),
+);
+```
+
+`LameStream` exposes `getEmitter()` and `getStatus()` so you receive live progress regardless of whether you encode or decode. Choose the direction up front via `mode: "encode"` or `"decode"` when constructing the stream, then treat it like any other duplex pipeline component.
+
 ## All options
 
 | Option                        | Description                                                                                                                                                                                                                                                                                                                                                                                                                   | Values                                                                                                                            | Default                                             |

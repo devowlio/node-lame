@@ -64,10 +64,7 @@ const createMockProcess = (): MockChildProcess => {
 
 let activeProcess: MockChildProcess | null = null;
 
-const {
-    createLameDecoderStream,
-    createLameEncoderStream,
-} = await import("../../src/core/lame-stream");
+const { LameStream } = await import("../../src/core/lame-stream");
 
 beforeEach(() => {
     spawnMock.mockReset();
@@ -83,9 +80,9 @@ afterEach(() => {
     activeProcess = null;
 });
 
-describe("LameCodecStream", () => {
+describe("LameStream", () => {
     it("spawns encoder stream with progress updates", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
 
         const process = activeProcess!;
         const [, args] = spawnMock.mock.calls.at(-1)! as [string, string[]];
@@ -106,7 +103,7 @@ describe("LameCodecStream", () => {
     });
 
     it("adds decode flag and handles percentage from decode output", () => {
-        const stream = createLameDecoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "decode" });
 
         const process = activeProcess!;
         const [, args] = spawnMock.mock.calls.at(-1)! as [string, string[]];
@@ -127,8 +124,31 @@ describe("LameCodecStream", () => {
         expect(finishSpy).toHaveBeenCalled();
     });
 
+    it("throws when mode is omitted", () => {
+        expect(
+            () =>
+                new LameStream({
+                    binaryPath: "/usr/bin/lame",
+                } as unknown as { binaryPath: string; mode: "encode" }),
+        ).toThrow(
+            'lame: LameStream requires a mode of either "encode" or "decode"',
+        );
+    });
+
+    it("throws when mode is invalid", () => {
+        expect(
+            () =>
+                new LameStream({
+                    binaryPath: "/usr/bin/lame",
+                    mode: "transcode" as "encode",
+                }),
+        ).toThrow(
+            'lame: LameStream requires a mode of either "encode" or "decode"',
+        );
+    });
+
     it("propagates CLI warnings as errors", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
 
         const process = activeProcess!;
         const errors: Error[] = [];
@@ -146,7 +166,7 @@ describe("LameCodecStream", () => {
     });
 
     it("handles backpressure and resolves after drain", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         process.stdin.write.mockImplementationOnce(() => false);
@@ -167,7 +187,7 @@ describe("LameCodecStream", () => {
     });
 
     it("propagates exit code 255 with descriptive error", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         const errors: Error[] = [];
@@ -185,7 +205,7 @@ describe("LameCodecStream", () => {
     });
 
     it("destroys the child process when manually destroyed", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         stream.destroy();
@@ -194,7 +214,7 @@ describe("LameCodecStream", () => {
     });
 
     it("surfaces errors from stdin.end during finalization", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         process.stdin.end.mockImplementationOnce(() => {
@@ -210,7 +230,7 @@ describe("LameCodecStream", () => {
     });
 
     it("resumes stdout consumption after backpressure resolves", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         const pushSpy = vi.spyOn(stream as unknown as { push: CallableFunction }, "push");
@@ -225,7 +245,7 @@ describe("LameCodecStream", () => {
     });
 
     it("does not resume stdout when the stream is not paused", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         stream.read();
@@ -233,7 +253,7 @@ describe("LameCodecStream", () => {
     });
 
     it("rejects writes once the stream has finished", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         Object.assign(stream as unknown as { finished: boolean }, { finished: true });
@@ -250,7 +270,7 @@ describe("LameCodecStream", () => {
     });
 
     it("propagates synchronous errors thrown by stdin.write", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         const boom = new Error("boom");
@@ -269,7 +289,7 @@ describe("LameCodecStream", () => {
     });
 
     it("surfaces errors emitted while waiting for drain", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
         const expected = new Error("drain failed");
 
@@ -297,7 +317,7 @@ describe("LameCodecStream", () => {
     });
 
     it("fails writes when stdin closes before draining", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         process.stdin.write.mockImplementationOnce(() => false);
@@ -316,7 +336,7 @@ describe("LameCodecStream", () => {
     });
 
     it("ends stdin when finalizing without errors", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         await new Promise<void>((resolve, reject) => {
@@ -333,7 +353,7 @@ describe("LameCodecStream", () => {
     });
 
     it("propagates kill failures during destruction", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
         const killError = new Error("cannot kill");
 
@@ -358,7 +378,7 @@ describe("LameCodecStream", () => {
     });
 
     it("marks status finished and terminates child when emitting stream error", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
         const statusBefore = stream.getStatus();
         const errors: Error[] = [];
@@ -375,7 +395,7 @@ describe("LameCodecStream", () => {
     });
 
     it("cleans up child listeners on successful completion", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
 
         const stdoutRemove = vi.spyOn(process.stdout, "removeAllListeners");
@@ -394,7 +414,7 @@ describe("LameCodecStream", () => {
     });
 
     it("propagates stdout errors through the stream", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
         const errors: Error[] = [];
         stream.getEmitter().on("error", (error) => errors.push(error));
@@ -407,7 +427,7 @@ describe("LameCodecStream", () => {
     });
 
     it("propagates stderr errors through the stream", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
         const errors: Error[] = [];
         stream.getEmitter().on("error", (error) => errors.push(error));
@@ -420,7 +440,7 @@ describe("LameCodecStream", () => {
     });
 
     it("writes without backpressure when stdin accepts the chunk", async () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
 
         await new Promise<void>((resolve, reject) => {
             stream.write(Buffer.from("ok"), (error) => {
@@ -434,7 +454,7 @@ describe("LameCodecStream", () => {
     });
 
     it("skips forwarding stdout once an error has occurred", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const pushSpy = vi.spyOn(stream as unknown as { push: CallableFunction }, "push");
         pushSpy.mockReturnValue(true);
 
@@ -448,7 +468,7 @@ describe("LameCodecStream", () => {
     });
 
     it("avoids pausing stdout when push succeeds", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
         const pushSpy = vi.spyOn(stream as unknown as { push: CallableFunction }, "push");
         pushSpy.mockReturnValue(true);
@@ -460,7 +480,7 @@ describe("LameCodecStream", () => {
     });
 
     it("skips killing the child when it was already terminated", () => {
-        const stream = createLameEncoderStream({ binaryPath: "/usr/bin/lame" });
+        const stream = new LameStream({ binaryPath: "/usr/bin/lame", mode: "encode" });
         const process = activeProcess!;
         process.killed = true;
         process.kill.mockClear();

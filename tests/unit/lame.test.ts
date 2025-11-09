@@ -167,7 +167,7 @@ describe("Lame", () => {
                     output: "stream",
                 } as unknown as any),
         ).toThrow(
-            "lame: The streaming output mode requires createLameEncoderStream or createLameDecoderStream",
+            'lame: The streaming output mode requires LameStream with mode set to "encode" or "decode"',
         );
     });
 
