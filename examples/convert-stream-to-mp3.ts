@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
-import { createLameEncoderStream } from "./helpers/load-node-lame.js";
+import { LameStream } from "./helpers/load-node-lame.js";
 import { removeIfExists } from "./helpers/remove-if-exists.js";
 
 const inputPath = resolve(
@@ -16,7 +16,8 @@ const outputPath = resolve(
 async function main(): Promise<void> {
     await removeIfExists(outputPath);
 
-    const encoderStream = createLameEncoderStream({
+    const encoderStream = new LameStream({
+        mode: "encode",
         bitrate: 192,
     });
 
