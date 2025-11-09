@@ -133,3 +133,4 @@ You operate as a senior Node.js and TypeScript backend engineer focused on maint
 - Document behavioural changes in commit messages following Conventional Commit rules so the release tooling can derive `CHANGELOG.md` for future releases.
 - Manual edits to `CHANGELOG.md` are only allowed for the 2.0.0 release; subsequent entries must come from the automated workflow.
 - After finishing any feature implementation, include in your final response a Conventional Commit-style message suggestion that downstream tooling can use.
+- When referencing Node.js types, import them explicitly (e.g. `import type { ProcessEnv } from "node:process";`) instead of relying on the `NodeJS.*` namespace to keep ESLint satisfied.

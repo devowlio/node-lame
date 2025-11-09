@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 declare const __dirname: string | undefined;
@@ -31,15 +31,47 @@ const moduleUrl = (() => {
         // ignore when import.meta is unavailable (CommonJS build)
     }
 
-    const resolvedFilename = __filename;
+    const resolvedFilename =
+        typeof __filename === "string" ? __filename : undefined;
 
     return deriveModuleUrl(meta, resolvedFilename);
 })();
+
+function findPackageRootFrom(startDir: string): string | null {
+    let current = startDir;
+
+    while (true) {
+        const packageJsonPath = join(current, "package.json");
+        if (existsSync(packageJsonPath)) {
+            return current;
+        }
+
+        const parent = dirname(current);
+        if (parent === current) {
+            return null;
+        }
+
+        current = parent;
+    }
+}
 
 function resolvePackageRoot(
     moduleHref: string | undefined,
     dirname: string | undefined,
 ): string {
+    const normalizedDir =
+        dirname ??
+        (moduleHref != null
+            ? fileURLToPath(new URL(".", moduleHref))
+            : undefined);
+
+    if (normalizedDir) {
+        const detectedRoot = findPackageRootFrom(normalizedDir);
+        if (detectedRoot) {
+            return detectedRoot;
+        }
+    }
+
     if (dirname) {
         return join(dirname, "..", "..", "..");
     }
@@ -51,8 +83,12 @@ function resolvePackageRoot(
     return process.cwd();
 }
 
-const PACKAGE_ROOT = resolvePackageRoot(moduleUrl, __dirname);
+const PACKAGE_ROOT = resolvePackageRoot(
+    moduleUrl,
+    typeof __dirname === "string" ? __dirname : undefined,
+);
 const CUSTOM_BINARY_ENV = "LAME_BINARY";
+const LIBRARY_DIRECTORY_NAME = "lib";
 
 function getPlatformExecutableSuffix(platform: typeof process.platform): string {
     return platform === "win32" ? ".exe" : "";
@@ -87,6 +123,22 @@ function resolveBundledLameBinary(): string | null {
     return null;
 }
 
+function resolveBundledLibraryDirectory(): string | null {
+    const candidate = join(
+        PACKAGE_ROOT,
+        "vendor",
+        "lame",
+        `${process.platform}-${process.arch}`,
+        LIBRARY_DIRECTORY_NAME,
+    );
+
+    if (existsSync(candidate)) {
+        return candidate;
+    }
+
+    return null;
+}
+
 /**
  * Resolve the binary to use. Preference order:
  * 1. `LAME_BINARY` environment variable.
@@ -102,6 +154,7 @@ export {
     deriveModuleUrl,
     getPlatformExecutableSuffix,
     resolveBundledLameBinary,
+    resolveBundledLibraryDirectory,
     resolveLameBinary,
     resolvePackageRoot,
 };
