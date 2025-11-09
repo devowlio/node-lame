@@ -7,7 +7,7 @@ on:
 jobs:
     quality:
         name: Quality checks (Node ${{ matrix.node }})
-        runs-on: ubuntu-latest
+        runs-on: debian-latest
         strategy:
             fail-fast: false
             matrix:
@@ -64,7 +64,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ubuntu-latest, macos-latest, windows-latest]
+                os: [debian-latest, macos-latest, windows-latest]
         steps:
             - name: Checkout
               uses: actions/checkout@v4
