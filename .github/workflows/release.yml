@@ -12,7 +12,7 @@ jobs:
             github.event.workflow_run.conclusion == 'success' &&
             github.event.workflow_run.head_branch == 'master' &&
             startsWith(github.event.workflow_run.head_commit.message, 'chore(release)')
-        runs-on: debian-latest
+        runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
@@ -70,7 +70,7 @@ jobs:
             github.event.workflow_run.conclusion == 'success' &&
             github.event.workflow_run.head_branch == 'master' &&
             startsWith(github.event.workflow_run.head_commit.message, 'chore(release)')
-        runs-on: debian-latest
+        runs-on: ubuntu-latest
         permissions:
             contents: write
             id-token: write
