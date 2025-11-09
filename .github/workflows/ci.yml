@@ -60,6 +60,7 @@ jobs:
     postinstall:
         name: LAME install on ${{ matrix.os }}
         runs-on: ${{ matrix.os }}
+        needs: quality
         strategy:
             fail-fast: false
             matrix:

@@ -35,6 +35,11 @@ const TARGET_BINARY = join(INSTALL_BASE, `lame${EXECUTABLE_SUFFIX}`);
 const LIB_DIRECTORY = join(INSTALL_BASE, "lib");
 const LIB_DIRECTORY_MARKER = join(LIB_DIRECTORY, ".installed");
 const LIBSNDFILE_VERSION = "1.2.0-1+deb12u1";
+const LIBFLAC_VERSION = "1.4.2+ds-2";
+const LIBOGG_VERSION = "1.3.5-3";
+const LIBVORBIS_VERSION = "1.3.7-1";
+const LIBOPUS_VERSION = "1.3.1-3";
+const LIBMPG123_VERSION = "1.31.2-1+deb12u1";
 
 const DOWNLOAD_SOURCES = {
     "linux-x64": [
@@ -115,6 +120,36 @@ const LINUX_SHARED_LIBRARY_PACKAGES = {
             url: `https://deb.debian.org/debian/pool/main/libs/libsndfile/libsndfile1_${LIBSNDFILE_VERSION}_amd64.deb`,
             libraryRoot: "usr/lib/x86_64-linux-gnu",
         },
+        {
+            name: "libflac12",
+            url: `https://deb.debian.org/debian/pool/main/f/flac/libflac12_${LIBFLAC_VERSION}_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
+        {
+            name: "libogg0",
+            url: `https://deb.debian.org/debian/pool/main/libo/libogg/libogg0_${LIBOGG_VERSION}_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
+        {
+            name: "libvorbis0a",
+            url: `https://deb.debian.org/debian/pool/main/libv/libvorbis/libvorbis0a_${LIBVORBIS_VERSION}_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
+        {
+            name: "libvorbisenc2",
+            url: `https://deb.debian.org/debian/pool/main/libv/libvorbis/libvorbisenc2_${LIBVORBIS_VERSION}_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
+        {
+            name: "libopus0",
+            url: `https://deb.debian.org/debian/pool/main/o/opus/libopus0_${LIBOPUS_VERSION}_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
+        {
+            name: "libmpg123-0",
+            url: `https://deb.debian.org/debian/pool/main/m/mpg123/libmpg123-0_${LIBMPG123_VERSION}_amd64.deb`,
+            libraryRoot: "usr/lib/x86_64-linux-gnu",
+        },
     ],
     "linux-arm64": [
         {
@@ -127,6 +162,36 @@ const LINUX_SHARED_LIBRARY_PACKAGES = {
             url: `https://deb.debian.org/debian/pool/main/libs/libsndfile/libsndfile1_${LIBSNDFILE_VERSION}_arm64.deb`,
             libraryRoot: "usr/lib/aarch64-linux-gnu",
         },
+        {
+            name: "libflac12",
+            url: `https://deb.debian.org/debian/pool/main/f/flac/libflac12_${LIBFLAC_VERSION}_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
+        {
+            name: "libogg0",
+            url: `https://deb.debian.org/debian/pool/main/libo/libogg/libogg0_${LIBOGG_VERSION}_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
+        {
+            name: "libvorbis0a",
+            url: `https://deb.debian.org/debian/pool/main/libv/libvorbis/libvorbis0a_${LIBVORBIS_VERSION}_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
+        {
+            name: "libvorbisenc2",
+            url: `https://deb.debian.org/debian/pool/main/libv/libvorbis/libvorbisenc2_${LIBVORBIS_VERSION}_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
+        {
+            name: "libopus0",
+            url: `https://deb.debian.org/debian/pool/main/o/opus/libopus0_${LIBOPUS_VERSION}_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
+        {
+            name: "libmpg123-0",
+            url: `https://deb.debian.org/debian/pool/main/m/mpg123/libmpg123-0_${LIBMPG123_VERSION}_arm64.deb`,
+            libraryRoot: "usr/lib/aarch64-linux-gnu",
+        },
     ],
     "linux-arm": [
         {
@@ -137,6 +202,36 @@ const LINUX_SHARED_LIBRARY_PACKAGES = {
         {
             name: "libsndfile1",
             url: `https://deb.debian.org/debian/pool/main/libs/libsndfile/libsndfile1_${LIBSNDFILE_VERSION}_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
+        },
+        {
+            name: "libflac12",
+            url: `https://deb.debian.org/debian/pool/main/f/flac/libflac12_${LIBFLAC_VERSION}_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
+        },
+        {
+            name: "libogg0",
+            url: `https://deb.debian.org/debian/pool/main/libo/libogg/libogg0_${LIBOGG_VERSION}_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
+        },
+        {
+            name: "libvorbis0a",
+            url: `https://deb.debian.org/debian/pool/main/libv/libvorbis/libvorbis0a_${LIBVORBIS_VERSION}_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
+        },
+        {
+            name: "libvorbisenc2",
+            url: `https://deb.debian.org/debian/pool/main/libv/libvorbis/libvorbisenc2_${LIBVORBIS_VERSION}_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
+        },
+        {
+            name: "libopus0",
+            url: `https://deb.debian.org/debian/pool/main/o/opus/libopus0_${LIBOPUS_VERSION}_armhf.deb`,
+            libraryRoot: "usr/lib/arm-linux-gnueabihf",
+        },
+        {
+            name: "libmpg123-0",
+            url: `https://deb.debian.org/debian/pool/main/m/mpg123/libmpg123-0_${LIBMPG123_VERSION}_armhf.deb`,
             libraryRoot: "usr/lib/arm-linux-gnueabihf",
         },
     ],
@@ -439,6 +534,7 @@ function copyLibrariesIntoTarget(sourceDir) {
             recursive: true,
             force: true,
             errorOnExist: false,
+            dereference: true,
         });
     }
 }

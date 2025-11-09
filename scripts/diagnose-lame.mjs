@@ -3,6 +3,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { platform } from "node:os";
+import { delimiter } from "node:path";
 
 const {
     resolveLameBinary,
@@ -13,21 +14,39 @@ function logSection(title) {
     console.log(`[lame-diagnostics] ${title}`);
 }
 
-const binaryPath = resolveLameBinary();
-logSection(`Resolved binary: ${binaryPath}`);
+const resolveLibraryDir = () => {
+    if (typeof resolveBundledLibraryDirectory === "function") {
+        return resolveBundledLibraryDirectory();
+    }
 
-try {
-    const stats = statSync(binaryPath);
-    logSection(
-        `File stats -> size=${stats.size} mode=${stats.mode.toString(8)} mtime=${stats.mtime.toISOString()}`,
-    );
-} catch (error) {
-    logSection(`stat() failed: ${error instanceof Error ? error.message : error}`);
-}
+    return null;
+};
+
+const libraryDir = resolveLibraryDir();
+const libraryEnvVar =
+    platform() === "linux"
+        ? "LD_LIBRARY_PATH"
+        : platform() === "darwin"
+            ? "DYLD_LIBRARY_PATH"
+            : platform() === "win32"
+                ? "PATH"
+                : null;
+
+const withLibraryEnv = () => {
+    const env = { ...process.env };
+    if (libraryDir && libraryEnvVar) {
+        env[libraryEnvVar] = env[libraryEnvVar]
+            ? `${libraryDir}${delimiter}${env[libraryEnvVar]}`
+            : libraryDir;
+    }
+
+    return env;
+};
 
 const runCommand = (cmd, args) => {
     const result = spawnSync(cmd, args, {
         encoding: "utf-8",
+        env: withLibraryEnv(),
     });
 
     logSection(
@@ -43,13 +62,30 @@ const runCommand = (cmd, args) => {
     }
 };
 
+const binaryPath = resolveLameBinary();
+logSection(`Resolved binary: ${binaryPath}`);
+
+try {
+    const stats = statSync(binaryPath);
+    logSection(
+        `File stats -> size=${stats.size} mode=${stats.mode.toString(8)} mtime=${stats.mtime.toISOString()}`,
+    );
+} catch (error) {
+    logSection(`stat() failed: ${error instanceof Error ? error.message : error}`);
+}
+
+if (libraryDir && libraryEnvVar) {
+    logSection(
+        `Using ${libraryEnvVar}=${libraryDir} when running diagnostics`,
+    );
+}
+
 runCommand(binaryPath, ["--version"]);
 
 if (platform() === "linux") {
     runCommand("ldd", [binaryPath]);
 }
 
-const libraryDir = resolveBundledLibraryDirectory();
 logSection(
     `Bundled library directory: ${libraryDir ?? "not found (not expected on this platform?)"}`,
 );
