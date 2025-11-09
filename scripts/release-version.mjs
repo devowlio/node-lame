@@ -5,6 +5,10 @@ const skipChangelog = process.env.SKIP_CHANGELOG === "1";
 const packageJson = JSON.parse(
     readFileSync(new URL("../package.json", import.meta.url), "utf-8"),
 );
+const semverModule = await import("semver");
+const semver = semverModule.default ?? semverModule;
+const targetVersion = "2.0.0";
+const isBeforeTarget = semver.lt(packageJson.version, targetVersion);
 
 const runCommand = (args) => {
     const result = spawnSync("pnpm", args, {
@@ -21,33 +25,39 @@ const runCommand = (args) => {
 };
 
 if (skipChangelog) {
-    const [{ default: conventionalRecommendedBump }, semver] = await Promise.all(
-        [
-            import("conventional-recommended-bump"),
-            import("semver"),
-        ],
-    );
+    let releaseType = "patch";
 
-    const releaseType = await new Promise((resolve, reject) => {
-        conventionalRecommendedBump(
-            { preset: "conventionalcommits" },
-            (error, recommendation) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
+    try {
+        const module = await import("conventional-recommended-bump");
+        const candidate =
+            typeof module.default === "function"
+                ? module.default
+                : undefined;
 
-                resolve(recommendation.releaseType ?? "patch");
-            },
+        if (candidate) {
+            const recommendation = await candidate({
+                preset: "conventionalcommits",
+            });
+            releaseType = recommendation?.releaseType ?? "patch";
+        } else {
+            console.warn(
+                "[release] conventional-recommended-bump did not expose a callable default export. Defaulting to patch bump.",
+            );
+        }
+    } catch (error) {
+        console.warn(
+            `[release] Failed to determine recommended bump (${error.message}). Defaulting to patch.`,
         );
-    });
+    }
 
-    const nextVersion = semver.inc(
-        packageJson.version,
-        releaseType ?? "patch",
-    );
-    if (!nextVersion) {
-        throw new Error("Unable to determine next version for release.");
+    let nextVersion =
+        semver.inc(packageJson.version, releaseType) ?? targetVersion;
+
+    if (isBeforeTarget && semver.lt(nextVersion, targetVersion)) {
+        console.log(
+            `[release] Forcing version to ${targetVersion} to begin the 2.x line.`,
+        );
+        nextVersion = targetVersion;
     }
 
     console.log(
@@ -60,18 +70,32 @@ if (skipChangelog) {
         nextVersion,
         "--yes",
         "--no-commit-hooks",
-        "--no-changelog",
-        "--no-conventional-commits",
+        "--conventional-commits",
+        "--no-push",
     ]);
 } else {
     console.log(
         "[release] Using Conventional Commits to generate the changelog.",
     );
 
-    runCommand([
-        "lerna",
-        "version",
-        "--yes",
-        "--no-commit-hooks",
-    ]);
+    if (isBeforeTarget) {
+        console.log(
+            `[release] Forcing version to ${targetVersion} to begin the 2.x line.`,
+        );
+        runCommand([
+            "lerna",
+            "version",
+            targetVersion,
+            "--yes",
+            "--no-commit-hooks",
+            "--conventional-commits",
+        ]);
+    } else {
+        runCommand([
+            "lerna",
+            "version",
+            "--yes",
+            "--no-commit-hooks",
+        ]);
+    }
 }

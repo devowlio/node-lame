@@ -69,7 +69,7 @@
   ],
   "dependencies": {
     "extract-zip": "~2.0.1",
-    "tar": "~7.5.1"
+    "tar": "~7.5.2"
   },
   "devDependencies": {
     "@commitlint/cli": "~20.1.0",
@@ -79,7 +79,7 @@
     "@typescript-eslint/eslint-plugin": "~8.46.2",
     "@typescript-eslint/parser": "~8.46.2",
     "@vitest/coverage-istanbul": "~4.0.4",
-    "conventional-changelog-cli": "^5.0.0",
+    "conventional-changelog-cli": "~5.0.0",
     "conventional-changelog-conventionalcommits": "~9.1.0",
     "conventional-recommended-bump": "~11.2.0",
     "eslint": "~9.38.0",

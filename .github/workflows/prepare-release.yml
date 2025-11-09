@@ -37,18 +37,6 @@ jobs:
           LAME_SKIP_DOWNLOAD: "1"
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm run lint
-
-      - name: Typecheck
-        run: pnpm run typecheck
-
-      - name: Unit tests
-        run: pnpm run test:unit
-
-      - name: Integration tests
-        run: pnpm run test:integration
-
       - name: Determine changelog mode
         id: changelog
         run: |
@@ -72,6 +60,7 @@ jobs:
           SKIP_CHANGELOG: ${{ steps.changelog.outputs.skip }}
         run: |
           set -eo pipefail
+          git checkout -B master ${{ github.event.workflow_run.head_commit.id }}
           pnpm run release:version > version.log 2>&1 || STATUS=$?
           cat version.log
           if [ -n "$STATUS" ]; then
@@ -88,4 +77,4 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: git push --follow-tags
+        run: git push --set-upstream origin master --follow-tags

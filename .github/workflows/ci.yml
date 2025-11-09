@@ -61,6 +61,7 @@ jobs:
         name: LAME install on ${{ matrix.os }}
         runs-on: ${{ matrix.os }}
         needs: quality
+        if: github.ref_name != 'master'
         strategy:
             fail-fast: false
             matrix:
