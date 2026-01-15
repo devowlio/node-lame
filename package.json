@@ -34,6 +34,8 @@
     },
     "files": [
         "dist/",
+        "scripts/install-lame.mjs",
+        "scripts/diagnose-lame.mjs",
         "README.md",
         "LICENSE"
     ],
