@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## <small>2.0.1 (2026-01-15)</small>
+
+- fix: missing scripts in shipped tarball for installation (#47) ([0c100d2](https://github.com/devowlio/node-lame/commit/0c100d2)), closes [#47](https://github.com/devowlio/node-lame/issues/47)
+- docs: changelog correction for first release with changelog ([2d0e35d](https://github.com/devowlio/node-lame/commit/2d0e35d))
+
+## <small>2.0.1 (2026-01-15)</small>
+
+- fix: missing scripts in shipped tarball for installation (#47) ([0c100d2](https://github.com/devowlio/node-lame/commit/0c100d2)), closes [#47](https://github.com/devowlio/node-lame/issues/47)
+- docs: changelog correction for first release with changelog ([2d0e35d](https://github.com/devowlio/node-lame/commit/2d0e35d))
+
 ## 2.0.0 (2025-11-09)
 
 ### Breaking Changes
