@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## <small>2.0.2 (2026-01-22)</small>
+
+- fix: export seperate typings for CommonJS consumers (#48) ([e029cfb](https://github.com/devowlio/node-lame/commit/e029cfb)), closes [#48](https://github.com/devowlio/node-lame/issues/48)
+- fix: exports for ESM consumers (#48) ([b66610e](https://github.com/devowlio/node-lame/commit/b66610e)), closes [#48](https://github.com/devowlio/node-lame/issues/48)
+- chore(deps): bump tar from 7.5.2 to 7.5.4 ([207d16f](https://github.com/devowlio/node-lame/commit/207d16f))
+
+## <small>2.0.2 (2026-01-22)</small>
+
+- fix: export seperate typings for CommonJS consumers (#48) ([e029cfb](https://github.com/devowlio/node-lame/commit/e029cfb)), closes [#48](https://github.com/devowlio/node-lame/issues/48)
+- fix: exports for ESM consumers (#48) ([b66610e](https://github.com/devowlio/node-lame/commit/b66610e)), closes [#48](https://github.com/devowlio/node-lame/issues/48)
+- chore(deps): bump tar from 7.5.2 to 7.5.4 ([207d16f](https://github.com/devowlio/node-lame/commit/207d16f))
+
 ## <small>2.0.1 (2026-01-15)</small>
 
 - fix: missing scripts in shipped tarball for installation (#47) ([0c100d2](https://github.com/devowlio/node-lame/commit/0c100d2)), closes [#47](https://github.com/devowlio/node-lame/issues/47)

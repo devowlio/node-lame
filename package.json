@@ -1,6 +1,6 @@
 {
     "name": "node-lame",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "description": "LAME MP3 encoder for Node.js",
     "homepage": "https://www.npmjs.com/package/node-lame",
     "repository": {
